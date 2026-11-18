@@ -23,7 +23,7 @@ import { paginaUsuarios } from './Usuarios.js';
 const TODAS = [
   { id: 'visao', nome: 'Visão geral', icone: ic.grid(18), sub: 'Bateria em tempo real', pagina: paginaVisao },
   { id: 'mapa', nome: 'Mapa visual', icone: ic.mapa(18), sub: 'Andaime, demolição, assentamento e revestimento de cada primária', pagina: paginaMapa },
-  { id: 'curva', nome: 'Curva S', icone: ic.curva(18), sub: 'Fornos revestidos por semana contra a meta do BM', pagina: paginaCurva },
+  { id: 'curva', nome: 'Curva S', icone: ic.curva(18), sub: 'Previsto da planilha × realizado, semana a semana, como no Excel', pagina: paginaCurva },
   { id: 'rdo', nome: 'RDO', icone: ic.diario(18), sub: 'Relatório diário, montado pelos lançamentos e pelo diário do campo', pagina: paginaRdo },
   { id: 'checklists', nome: 'Checklists', icone: ic.camera(18), sub: 'Fotos de entrega dos fornos e relação para a medição', pagina: paginaChecklists },
   { id: 'documentos', nome: 'Documentos', icone: ic.documento(18), sub: 'PDFs e planilhas de controle preenchidas pelo app', pagina: paginaDocumentos },

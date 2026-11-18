@@ -1,83 +1,74 @@
-// Curva S de revestimento por BM: fornos com as 6 primárias na massa 1200,
-// semana a semana contra a meta do BM (36 por padrão, dividida nas semanas).
-// O planejador ajusta a meta de cada semana aqui; a do BM, em Configuração.
+// Curva S igual à planilha da Curva S: o contrato inteiro, semana a semana,
+// agrupado por BM, com previsto e replanejado da planilha e o realizado dos
+// lançamentos. O previsto se muda no Excel; a sincronização traz para o app.
 import { el } from '../../base/dom.js';
-import { graficoCurvaBm, graficoBms } from '../../components/graficos.js';
+import { segmented } from '../../base/ui.js';
+import { graficoCurvaS } from '../../components/curvaS.js';
+import { graficoBms } from '../../components/graficos.js';
 import { contratoAtivo } from '../../data/obra.js';
-import { curvaBm, bmsDoContrato, bmAtual, metaDoBm } from '../../lib/calculo.js';
-import { salvarConfig } from '../../lib/banco.js';
-import { curta, nomeBm, rotuloBm } from '../../lib/datas.js';
+import { curvaContrato, curvaBm, bmsDoContrato, bmAtual } from '../../lib/calculo.js';
+import { curta, rotuloBm, completa } from '../../lib/datas.js';
 
-let bmEscolhido = null;
+let modo = 'numero';
 const qtd = (n) => `${n} forno${n === 1 ? '' : 's'}`;
-const pct = (v) => (v == null || !Number.isFinite(v) ? '—' : `${(v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%`);
+const pct = (v) => (v == null || !Number.isFinite(v) ? '' : `${(v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`);
+
+export function carimboAgora() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} - ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 export function paginaCurva(ctx) {
-  const { calc, leitura } = ctx;
-  const atual = bmAtual();
-  const bms = bmsDoContrato(calc).map((b) => ({ ...b, rotulo: rotuloBm(b.bm), atual: b.bm === atual }));
-  if (!bmEscolhido || !bms.some((b) => b.bm === bmEscolhido)) bmEscolhido = atual;
-  const c = curvaBm(calc, bmEscolhido);
-  const ehAtual = bmEscolhido === atual;
-  const ajustes = calc.estado.config?.metaSemanas || {};
-  const contrato = contratoAtivo();
-  const redesenhar = () => ctx.redesenhar();
+  const { calc } = ctx;
+  const c = curvaContrato(calc);
+  const bmA = curvaBm(calc, bmAtual());
+  const sem = c.atual;
+  const desvio = c.realizado - c.previstoAteHoje;
+  const fonte = calc.estado.config?.curva;
+  const bms = bmsDoContrato(calc).map((b) => ({ ...b, rotulo: rotuloBm(b.bm), atual: b.bm === bmAtual() }));
 
-  const seletor = el('div', { class: 'blocos-trilho', role: 'tablist', 'aria-label': 'Boletins de medição' }, bms.map((b) => el('button', {
-    type: 'button', role: 'tab', 'aria-selected': String(b.bm === bmEscolhido), class: `bloco-op${b.bm === bmEscolhido ? ' ativo' : ''}`,
-    onclick: (ev) => { bmEscolhido = b.bm; redesenhar(); }
-  }, [`BM ${b.rotulo}`, el('i', {}, el('b', { style: { width: `${Math.min(100, (b.realizado / (b.meta || 1)) * 100)}%` } })), el('small', {}, `${b.realizado}/${b.meta}`)])));
-
-  const semana = c.atual;
   return [
-    seletor,
     el('div', { class: 'indicadores' }, [
-      bloco(`Meta do BM ${rotuloBm(c.bm)}`, qtd(c.meta), `${nomeBm(c.bm)} · ${c.pontos.length} semanas`),
-      bloco('Revestidos no BM', qtd(c.realizado), `${pct(c.realizado / c.meta)} da meta`, c.realizado >= c.meta ? 'bom' : ''),
-      ehAtual
-        ? bloco('Faltam', qtd(c.faltam), c.faltam ? `ritmo de ${c.ritmo} por semana até ${curta(c.fim)}` : 'meta do BM batida', c.faltam ? 'alerta' : 'bom')
-        : bloco('Saldo', `${c.realizado - c.meta >= 0 ? '+' : ''}${c.realizado - c.meta} fornos`, c.realizado >= c.meta ? 'acima da meta' : 'abaixo da meta', c.realizado >= c.meta ? 'bom' : 'alerta'),
-      ehAtual && semana
-        ? bloco(`Semana ${semana.semana}`, `${semana.realizado} de ${semana.meta}`, `${curta(semana.ini)} a ${curta(semana.fim)}`, semana.realizado >= semana.meta ? 'bom' : '')
-        : bloco('Aderência', pct(c.realizado / c.meta), 'revestidos ÷ meta do BM')
+      bloco('Previsto no contrato', qtd(c.total), `${contratoAtivo().nome} · bateria ${contratoAtivo().bateria}`),
+      bloco('Realizado', qtd(c.realizado), `${pct(c.realizado / c.total)} do previsto total`, 'bom'),
+      bloco('Previsto até hoje', qtd(c.previstoAteHoje), desvio >= 0 ? `${qtd(desvio)} à frente` : `${qtd(-desvio)} atrás`, desvio >= 0 ? 'bom' : 'alerta'),
+      bloco(`BM ${rotuloBm(bmA.bm)}`, `${bmA.realizado} de ${bmA.meta}`, bmA.faltam ? `faltam ${qtd(bmA.faltam)} até ${curta(bmA.fim)}` : 'previsto do BM atingido', bmA.faltam ? '' : 'bom'),
+      sem ? bloco(`Semana ${sem.semana}`, `${sem.realizado ?? 0} de ${sem.previsto}`, `${curta(sem.seg)} a ${curta(sem.dom)}`) : null
     ]),
     el('section', { class: 'cartao' }, [
-      el('div', { class: 'cartao-topo' }, [el('div', {}, [
-        el('h3', {}, `Curva S · BM ${rotuloBm(c.bm)}`),
-        el('p', {}, `Revestimento da bateria ${contrato.bateria}, em fornos. Conta o forno na semana em que a última primária recebeu a massa 1200. Semana sem revestimento fica com zero.`)
-      ])]),
-      graficoCurvaBm(c, { altura: 340 })
+      el('div', { class: 'cartao-topo' }, [
+        el('div', {}, [
+          el('h3', {}, 'Curva S'),
+          el('p', {}, fonte?.importadoEm ? `Previsto da planilha "${fonte.arquivo || 'Curva S'}", sincronizada em ${new Date(fonte.importadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.` : 'Previsto da planilha da Curva S. Para mudar o previsto, mude no Excel e sincronize a pasta.')
+        ]),
+        el('div', { class: 'curva-modo' }, segmented([{ value: 'numero', label: 'Nº de fornos' }, { value: 'percentual', label: 'Percentual' }], modo, (v) => { modo = v; ctx.redesenhar(); }))
+      ]),
+      graficoCurvaS(c, { modo, atualizadoEm: carimboAgora() })
     ]),
     el('section', { class: 'cartao' }, [
-      el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Semana a semana'), el('p', {}, leitura ? 'Meta e realizado de cada semana do BM.' : `A meta do BM (${metaDoBm(calc)}) é dividida nas semanas. Ajuste a meta de uma semana aqui; deixe em branco para voltar à divisão automática.`)])]),
+      el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Semana a semana'), el('p', {}, 'Como na aba "BD - REV" da planilha. O realizado conta o forno na semana em que a última primária recebeu a massa 1200.')])]),
       el('div', { class: 'table-wrap' }, el('table', { class: 'data-table tabela-compacta' }, [
-        el('thead', {}, el('tr', {}, ['Semana', 'Período', 'Meta', 'Revestidos', 'Aderência', 'Meta acum.', 'Realizado acum.', 'Fornos'].map((t, i) => el('th', { class: i >= 2 && i <= 6 ? 'n' : '' }, t)))),
-        el('tbody', {}, c.pontos.map((p) => {
-          const chave = `${c.bm}:${p.semana}`;
-          return el('tr', { class: p.atual ? 'semana-atual' : '' }, [
-            el('td', { class: 'strong' }, p.atual ? [p.semana, el('small', { class: 'fraco' }, ' atual')] : p.semana),
-            el('td', {}, `${curta(p.ini)} a ${curta(p.fim)}`),
-            el('td', { class: 'n' }, leitura ? String(p.meta) : el('input', {
-              class: 'input input-compact', type: 'number', min: 0, max: 99, value: ajustes[chave] ?? '', placeholder: String(p.meta),
-              style: { width: '70px', height: '34px', textAlign: 'right' }, 'aria-label': `Meta da ${p.semana}`,
-              onchange: (ev) => {
-                const novo = { ...ajustes };
-                if (ev.target.value === '') delete novo[chave];
-                else novo[chave] = Math.max(0, Math.round(Number(ev.target.value)));
-                salvarConfig({ metaSemanas: novo });
-              }
-            })),
-            el('td', { class: 'n' }, p.realizado == null ? '—' : String(p.realizado)),
-            el('td', { class: 'n' }, p.realizado == null || !p.meta ? '—' : pct(p.realizado / p.meta)),
-            el('td', { class: 'n' }, String(p.metaAcum)),
-            el('td', { class: 'n' }, p.realizadoAcum == null ? '—' : String(p.realizadoAcum)),
-            el('td', { class: 'fraco', style: { fontSize: '12.5px' } }, p.fornos.length ? p.fornos.map((f) => f.replace('-', ' ')).join(', ') : '—')
-          ]);
-        }))
+        el('thead', {}, el('tr', {}, ['BM', 'Período do BM', 'Semana', 'Início', 'Fim', 'Previsto', 'Prev. acum.', '% prev. acum.', ...(c.comReplanejado ? ['Replanejado', 'Replan. acum.'] : []), 'Realizado', 'Real. acum.', '% real. acum.', 'Fornos'].map((t, i) => el('th', { class: i >= 5 && t !== 'Fornos' ? 'n' : '' }, t)))),
+        el('tbody', {}, c.pontos.map((p) => el('tr', { class: p.atual ? 'semana-atual' : '' }, [
+          el('td', {}, p.bm),
+          el('td', { class: 'nowrap' }, p.bmRotulo),
+          el('td', { class: 'strong' }, p.atual ? [p.semana, el('small', { class: 'fraco' }, ' atual')] : p.semana),
+          el('td', {}, curta(p.ini)),
+          el('td', {}, curta(p.fim)),
+          el('td', { class: 'n' }, String(p.previsto)),
+          el('td', { class: 'n' }, String(p.previstoAcum)),
+          el('td', { class: 'n' }, pct(p.previstoAcum / c.total)),
+          ...(c.comReplanejado ? [el('td', { class: 'n' }, p.replanejado == null ? '' : String(p.replanejado)), el('td', { class: 'n' }, String(p.replanejadoAcum ?? ''))] : []),
+          el('td', { class: 'n strong' }, p.realizado == null ? '' : String(p.realizado)),
+          el('td', { class: 'n' }, p.realizadoAcum == null ? '' : String(p.realizadoAcum)),
+          el('td', { class: 'n' }, p.realizadoAcum == null ? '' : pct(p.realizadoAcum / c.total)),
+          el('td', { class: 'fraco', style: { fontSize: '12.5px' } }, p.fornos.map((f) => f.replace('-', ' ')).join(', '))
+        ])))
       ]))
     ]),
     el('section', { class: 'cartao' }, [
-      el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Fornos revestidos por BM'), el('p', {}, `${contrato.nome} · bateria ${contrato.bateria}`)])]),
+      el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Fornos revestidos por BM'), el('p', {}, `Previsto da planilha × realizado · situação em ${completa(new Date().toISOString().slice(0, 10))}`)])]),
       graficoBms(bms)
     ])
   ];

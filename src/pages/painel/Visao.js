@@ -3,11 +3,12 @@ import { el } from '../../base/dom.js';
 import { legendaEtapas, statusChip } from '../../components/base.js';
 import { mapaBateria } from '../../components/mapa.js';
 import { feed } from '../../components/feed.js';
-import { graficoCurvaBm, graficoProducao } from '../../components/graficos.js';
+import { graficoProducao } from '../../components/graficos.js';
+import { graficoCurvaS } from '../../components/curvaS.js';
 import { abrirForno } from '../../components/detalheForno.js';
 import { abrirChecklistFotos } from '../../components/checklistFotos.js';
 import { FORNOS, contratoAtivo } from '../../data/obra.js';
-import { avancoFisico, idxsDaBateria, semanaAtual, producaoDiaria, rdoDoDia, checklists } from '../../lib/calculo.js';
+import { avancoFisico, idxsDaBateria, semanaAtual, producaoDiaria, rdoDoDia, checklists, curvaContrato } from '../../lib/calculo.js';
 import { hoje, somarDias, rotuloBm, curta } from '../../lib/datas.js';
 
 const pct = (v, casas = 1) => `${(v * 100).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })}%`;
@@ -62,8 +63,8 @@ export function paginaVisao({ calc, perfil, leitura, mudou, ir }) {
     cartaoMapa,
     el('div', { class: 'painel-grade' }, [
       el('section', { class: 'cartao' }, [
-        el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, `Curva S · BM ${rotuloBm(curva.bm)}`), el('p', {}, `Fornos revestidos contra a meta de ${curva.meta} no BM`)]), el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => ir('curva') }, 'Detalhes')]),
-        graficoCurvaBm(curva, { altura: 300 })
+        el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Curva S'), el('p', {}, `Contrato inteiro, como na planilha · BM ${rotuloBm(curva.bm)}: ${curva.realizado} de ${curva.meta}`)]), el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => ir('curva') }, 'Detalhes')]),
+        graficoCurvaS(curvaContrato(calc), { compacto: true, altura: 300 })
       ]),
       el('div', { class: 'pilha', style: { gap: '18px' } }, [aoVivo, cartaoRdo])
     ]),

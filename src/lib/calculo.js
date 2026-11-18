@@ -2,11 +2,12 @@
 // por BM, RDO do dia, checklist com fotos, XP e conquistas. Funções puras
 // sobre o estado do banco.
 import { SEED_BATERIAS, SEED_EPOCH, SEED_VALORES_POR_PRIMARIA } from '../data/seed.js';
+import { SEED_CURVA } from '../data/curva-seed.js';
 import {
   PRIMARIAS, FORNOS, ETAPAS, etapaPorId, contratoAtivo, blocosDa, fornoPorId, primariaPorId,
-  MATERIAIS, primariasDoAlvo, BATERIAS, RDO_ULTIMO, noMeio, META_FORNOS_BM, SLOTS_FOTO
+  MATERIAIS, primariasDoAlvo, BATERIAS, RDO_ULTIMO, noMeio, SLOTS_FOTO
 } from '../data/obra.js';
-import { somarDias, semana, hoje, diaUtil, diaUtilAnterior, bm, bmDaSemana, semanasDoBm, periodoBm, bmsEntre } from './datas.js';
+import { somarDias, semana, hoje, diaUtil, diaUtilAnterior, bm, bmDaSemana, semanasDoBm, periodoBm, bmsEntre, inicioDaSemana } from './datas.js';
 
 const N_ETAPAS = ETAPAS.length;
 const IDX = Object.fromEntries(ETAPAS.map((e, i) => [e.id, i]));
@@ -173,73 +174,121 @@ export const idxsDoForno = (fid) => fornoPorId[fid].prims.map((id) => primariaPo
 export const idxsDoBloco = (bl) => PRIMARIAS.filter((p) => p.bloco === bl).map((p) => p.idx);
 
 // ---------------------------------------------------------------------------
-// Curva S de revestimento: só fornos (as 6 primárias com massa 1200), por BM
-// (dia 16 ao dia 15), meta mensal configurável (36). A semana inteira conta no
-// BM da sua segunda-feira. Semana sem revestimento fica com zero.
+// Curva S de revestimento, igual à planilha da Curva S (aba "BD - REV"): por
+// semana, o previsto e o replanejado vêm da planilha (importada na
+// sincronização com a pasta, ou a que veio com o app); o realizado são os
+// fornos que fecharam (as 6 primárias com massa 1200) naquela semana, de
+// segunda a domingo. Semana sem revestimento fica com zero; semana futura,
+// sem realizado.
 // ---------------------------------------------------------------------------
-export const metaDoBm = (calc) => Number(calc.estado.config?.metaBm) || META_FORNOS_BM;
 export const bmAtual = () => bmDaSemana(hoje());
+export const semanasDaPlanilha = (calc) => (calc.estado.config?.curva?.semanas?.length ? calc.estado.config.curva.semanas : SEED_CURVA);
 
-/** Meta de cada semana: a meta do BM dividida igualmente (a sobra vai para as primeiras), ou a ajustada pelo planejador. */
-function metasDasSemanas(calc, bmId, semanas) {
-  const meta = metaDoBm(calc);
-  const base = Math.floor(meta / semanas.length);
-  let sobra = meta - base * semanas.length;
-  const ajustes = calc.estado.config?.metaSemanas || {};
-  return semanas.map((s) => {
-    const ajustada = ajustes[`${bmId}:${s.semana}`];
-    if (ajustada !== undefined && ajustada !== null && ajustada !== '') return Number(ajustada);
-    const v = base + (sobra > 0 ? 1 : 0);
-    if (sobra > 0) sobra--;
-    return v;
-  });
+function fornosFechadosEntre(calc, de, ate) {
+  const bat = contratoAtivo().bateria;
+  return FORNOS.filter((f) => {
+    if (f.bateria !== bat) return false;
+    const d = calc.fornos[f.id].concluidoEm;
+    return d && d >= de && d <= ate;
+  }).map((f) => f.id);
 }
 
-export function curvaBm(calc, bmId = bmAtual()) {
-  const bat = contratoAtivo().bateria;
-  const { inicio, fim } = periodoBm(bmId);
-  const semanas = semanasDoBm(bmId);
-  const metas = metasDasSemanas(calc, bmId, semanas);
-  const fornosBat = FORNOS.filter((f) => f.bateria === bat);
+/** A curva do contrato inteiro, semana a semana, agrupada por BM. */
+export function curvaContrato(calc) {
+  const linhas = semanasDaPlanilha(calc);
   const dataHoje = hoje();
-  let ma = 0;
+  const total = linhas.reduce((s, l) => s + (Number(l.previsto) || 0), 0) || 1;
+  const comReplanejado = linhas.some((l) => l.replanejado != null);
+  const contadas = new Set();
+  let pa = 0;
+  let rpa = 0;
   let ra = 0;
-  const pontos = semanas.map((s, i) => {
-    const fechados = fornosBat.filter((f) => {
-      const d = calc.fornos[f.id].concluidoEm;
-      return d && d >= s.ini && d <= s.fim;
-    });
-    const futuro = s.ini > dataHoje;
-    ma += metas[i];
-    ra += fechados.length;
+  const pontos = linhas.map((l) => {
+    const seg = inicioDaSemana(l.ini);
+    const dom = somarDias(seg, 6);
+    const futuro = seg > dataHoje;
+    // a mesma semana em duas linhas (virada de BM) conta uma vez só
+    const fornos = contadas.has(seg) ? [] : fornosFechadosEntre(calc, seg, dom);
+    contadas.add(seg);
+    const previsto = Number(l.previsto) || 0;
+    const replanejado = l.replanejado == null ? null : Number(l.replanejado);
+    pa += previsto;
+    if (comReplanejado) rpa += replanejado ?? previsto;
+    if (!futuro) ra += fornos.length;
     return {
-      ...s,
-      meta: metas[i],
-      metaAcum: ma,
-      realizado: futuro ? null : fechados.length,
+      ...l,
+      seg,
+      dom,
+      previsto,
+      previstoAcum: pa,
+      replanejado,
+      replanejadoAcum: comReplanejado ? rpa : null,
+      realizado: futuro ? null : fornos.length,
       realizadoAcum: futuro ? null : ra,
-      fornos: fechados.map((f) => f.id),
-      atual: dataHoje >= s.ini && dataHoje <= s.fim,
+      fornos,
+      atual: dataHoje >= seg && dataHoje <= dom,
       futuro
     };
   });
-  const meta = metas.reduce((s, n) => s + n, 0);
+  const bms = [];
+  pontos.forEach((p, i) => {
+    const ult = bms[bms.length - 1];
+    if (ult && ult.bm === p.bm) ult.ate = i;
+    else bms.push({ bm: p.bm, rotulo: p.bmRotulo, de: i, ate: i });
+  });
+  const ateHoje = pontos.filter((p) => !p.futuro);
+  return {
+    pontos,
+    bms,
+    total,
+    comReplanejado,
+    atual: pontos.find((p) => p.atual) || null,
+    realizado: ra,
+    previstoAteHoje: ateHoje.length ? ateHoje[ateHoje.length - 1].previstoAcum : 0
+  };
+}
+
+/** Um BM da curva: as semanas dele, o previsto (meta) e o realizado. */
+export function curvaBm(calc, bmId = bmAtual()) {
+  const { inicio, fim } = periodoBm(bmId);
+  let pontos = curvaContrato(calc).pontos.filter((p) => p.bm === bmId);
+  if (!pontos.length) {
+    // BM fora da planilha: semanas sem previsto
+    const dataHoje = hoje();
+    pontos = semanasDoBm(bmId).map((s) => {
+      const fornos = fornosFechadosEntre(calc, s.ini, s.fim);
+      const futuro = s.ini > dataHoje;
+      return { ...s, seg: s.ini, dom: s.fim, previsto: 0, realizado: futuro ? null : fornos.length, fornos, atual: dataHoje >= s.ini && dataHoje <= s.fim, futuro };
+    });
+  }
+  let ma = 0;
+  let ra = 0;
+  pontos = pontos.map((p) => {
+    ma += p.previsto;
+    if (p.realizado != null) ra += p.realizado;
+    return { ...p, ini: p.seg, fim: p.dom, meta: p.previsto, metaAcum: ma, realizadoAcum: p.realizado == null ? null : ra };
+  });
+  const meta = ma;
   const atual = pontos.find((p) => p.atual) || null;
   const restantes = pontos.filter((p) => p.futuro || p.atual).length;
   const faltam = Math.max(0, meta - ra);
   return { bm: bmId, inicio, fim, meta, realizado: ra, faltam, pontos, atual, ritmo: restantes ? Math.ceil(faltam / restantes) : 0 };
 }
 
-/** BMs do contrato até o atual, com meta e realizado de cada um. */
+/** Previsto (meta) de um BM, pela planilha da Curva S. */
+export const metaDoBm = (calc, bmId = bmAtual()) => curvaBm(calc, bmId).meta;
+
+/** BMs do contrato: os da planilha e os que já passaram, com meta e realizado. */
 export function bmsDoContrato(calc) {
-  const contrato = contratoAtivo();
-  return bmsEntre(bm(contrato.inicio), bmAtual()).map((id) => {
+  const ids = new Set(semanasDaPlanilha(calc).map((l) => l.bm));
+  for (const id of bmsEntre(bm(contratoAtivo().inicio), bmAtual())) ids.add(id);
+  return [...ids].sort().map((id) => {
     const c = curvaBm(calc, id);
     return { bm: id, inicio: c.inicio, fim: c.fim, meta: c.meta, realizado: c.realizado };
   });
 }
 
-/** Semana corrente: meta e fornos fechados, e o BM em andamento. */
+/** Semana corrente: previsto e fornos fechados, e o BM em andamento. */
 export function semanaAtual(calc) {
   const c = curvaBm(calc);
   const fornosBat = FORNOS.filter((f) => f.bateria === contratoAtivo().bateria);

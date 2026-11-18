@@ -10,7 +10,7 @@
 // Funciona no navegador e no Node (testes), sem DOM.
 import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
 import { PRIMARIAS, FORNOS, primariaPorId, contratoAtivo, localMedicao } from '../data/obra.js';
-import { INDICE_ETAPA as IDX, curvaBm, bmAtual, relacaoDoBm } from './calculo.js';
+import { INDICE_ETAPA as IDX, relacaoDoBm } from './calculo.js';
 import { iso, hoje, inicioDaSemana, somarDias, periodoBm, referenciaBm, completa, bmDaSemana } from './datas.js';
 
 // ---------------------------------------------------------------------------
@@ -329,17 +329,15 @@ export function atualizarGestaoVisual(bytes, calc, { agora = new Date(), bateria
 // Curva S: aba "BD - REV" (linha 2 em diante)
 // A BM · E início da semana ("dd/mm/aaaa - ddd") · H semana · I previsto · U realizado
 // ---------------------------------------------------------------------------
-export function atualizarCurvaS(bytes, calc, { agora = new Date(), gravarMeta = false, dataHoje = hoje() } = {}) {
+export function atualizarCurvaS(bytes, calc, { agora = new Date(), dataHoje = hoje() } = {}) {
   const pacote = abrirPacote(bytes);
   const bd = abrirAba(pacote, 'BD - REV');
   if (!bd) throw new Error('Não achei a aba "BD - REV". Confira se é a planilha da Curva S.');
   const { aba } = bd;
   const bat = contratoAtivo().bateria;
   const fechados = FORNOS.filter((f) => f.bateria === bat && calc.fornos[f.id].concluidoEm).map((f) => calc.fornos[f.id].concluidoEm);
-  const resumo = { semanas: 0, realizado: 0, metas: 0, celulas: 0 };
+  const resumo = { semanas: 0, realizado: 0, celulas: 0 };
   const usadas = new Set();
-  const atual = bmAtual();
-  const metaDaLinha = gravarMeta ? metasPorLinha(aba, calc, atual) : new Map();
   for (const r of aba.linhas()) {
     if (r < 2) continue;
     const texto = aba.valor(`E${r}`);
@@ -358,10 +356,6 @@ export function atualizarCurvaS(bytes, calc, { agora = new Date(), gravarMeta = 
       resumo.realizado += valor;
     }
     if (!aba.temFormula(`U${r}`) && aba.definir(`U${r}`, valor)) resumo.celulas++;
-    if (metaDaLinha.has(r) && !aba.temFormula(`I${r}`) && aba.definir(`I${r}`, metaDaLinha.get(r))) {
-      resumo.celulas++;
-      resumo.metas++;
-    }
   }
   pacote.gravar(bd.caminho, aba.toString());
   const at = abrirAba(pacote, 'Atualização');
@@ -374,44 +368,39 @@ export function atualizarCurvaS(bytes, calc, { agora = new Date(), gravarMeta = 
 }
 
 /**
- * Meta do app nas linhas do BM atual em diante: a semana com meta ajustada
- * pelo planejador leva o ajuste; o resto da meta do BM é dividido igualmente
- * nas outras linhas daquele BM na planilha (a sobra vai para as primeiras).
+ * Lê a aba "BD - REV" da Curva S: por semana, BM, rótulo do BM, início e fim,
+ * dias úteis, previsto e replanejado (o realizado sai dos lançamentos do app).
  */
-function metasPorLinha(aba, calc, atual) {
-  const porBm = new Map();
+export function lerCurvaS(bytes) {
+  const pacote = abrirPacote(bytes);
+  const bd = abrirAba(pacote, 'BD - REV');
+  if (!bd) throw new Error('Não achei a aba "BD - REV". Confira se é a planilha da Curva S.');
+  const { aba } = bd;
+  const data = (v) => {
+    if (typeof v === 'number') return dataDoSerial(v);
+    const m = typeof v === 'string' ? /(\d{2})\/(\d{2})\/(\d{4})/.exec(v) : null;
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+  };
+  const num = (v) => (v === null || v === '' || v === undefined || Number.isNaN(Number(v)) ? null : Number(v));
+  const semanas = [];
   for (const r of aba.linhas()) {
     if (r < 2) continue;
-    const bmId = aba.valor(`A${r}`);
-    const texto = aba.valor(`E${r}`);
-    const m = typeof texto === 'string' ? /(\d{2})\/(\d{2})\/(\d{4})/.exec(texto) : null;
-    if (typeof bmId !== 'string' || !/^\d{4}_\d{2}$/.test(bmId) || bmId < atual || !m) continue;
-    if (!porBm.has(bmId)) porBm.set(bmId, []);
-    porBm.get(bmId).push({ r, seg: inicioDaSemana(`${m[3]}-${m[2]}-${m[1]}`) });
+    const bm = aba.valor(`A${r}`);
+    const ini = data(aba.valor(`E${r}`));
+    if (typeof bm !== 'string' || !/^\d{4}_\d{2}$/.test(bm.trim()) || !ini) continue;
+    semanas.push({
+      bm: bm.trim(),
+      bmRotulo: String(aba.valor(`B${r}`) || '').trim(),
+      semana: String(aba.valor(`H${r}`) || '').trim(),
+      ini,
+      fim: data(aba.valor(`F${r}`)) || ini,
+      dias: num(aba.valor(`G${r}`)),
+      previsto: num(aba.valor(`I${r}`)) || 0,
+      replanejado: num(aba.valor(`O${r}`))
+    });
   }
-  const saida = new Map();
-  const ajustes = calc.estado.config?.metaSemanas || {};
-  for (const [bmId, linhas] of porBm) {
-    const c = curvaBm(calc, bmId);
-    let resto = c.meta;
-    const livres = [];
-    for (const l of linhas) {
-      const p = c.pontos.find((x) => x.ini === l.seg);
-      const aj = p ? ajustes[`${bmId}:${p.semana}`] : undefined;
-      if (aj !== undefined && aj !== null && aj !== '') {
-        saida.set(l.r, Number(aj));
-        resto -= Number(aj);
-      } else livres.push(l);
-    }
-    resto = Math.max(0, resto);
-    const base = livres.length ? Math.floor(resto / livres.length) : 0;
-    let sobra = resto - base * livres.length;
-    for (const l of livres) {
-      saida.set(l.r, base + (sobra > 0 ? 1 : 0));
-      if (sobra > 0) sobra--;
-    }
-  }
-  return saida;
+  if (!semanas.length) throw new Error('A aba "BD - REV" não tem semanas.');
+  return semanas;
 }
 
 // ---------------------------------------------------------------------------

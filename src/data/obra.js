@@ -24,7 +24,6 @@ export const CONTRATOS = [
 export const contratoAtivo = () => CONTRATOS.find((c) => c.ativo);
 
 // Meta de revestimento: fornos concluídos por boletim de medição (dia 16 ao dia 15).
-export const META_FORNOS_BM = 36;
 
 // As etapas, na ordem do serviço. Andaime é lançado por lado do forno
 // (cabeceira); o resto, por primária. A desmontagem do andaime fecha o

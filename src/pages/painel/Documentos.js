@@ -5,12 +5,13 @@
 import { el } from '../../base/dom.js';
 import { legendaEtapas, statusChip } from '../../components/base.js';
 import { mapaBateria } from '../../components/mapa.js';
-import { graficoCurvaBm, graficoBms } from '../../components/graficos.js';
+import { graficoCurvaS } from '../../components/curvaS.js';
+import { carimboAgora } from './Curva.js';
 import { abrirImpressao } from '../../components/impressao.js';
 import { NOME_STATUS } from '../../components/checklistFotos.js';
 import { ic } from '../../lib/icones.js';
 import { ETAPAS_MAPA, CLIENTE, SERVICO, contratoAtivo, localMedicao, rotulo } from '../../data/obra.js';
-import { curvaBm, bmsDoContrato, bmAtual, contagemPorEtapa, relacaoDoBm } from '../../lib/calculo.js';
+import { curvaBm, curvaContrato, bmsDoContrato, bmAtual, contagemPorEtapa, relacaoDoBm } from '../../lib/calculo.js';
 import { lerModelo, guardarModelo } from '../../lib/modelos.js';
 import { baixar, nomeAtualizado, pdfChecklists, TIPO_XLSX, TIPO_XLSM } from '../../lib/documentos.js';
 import { hoje, completa, curta, nomeBm, rotuloBm, referenciaBm, periodoBm } from '../../lib/datas.js';
@@ -23,7 +24,6 @@ const MODELOS = {
 };
 let modelos = null;
 let bmEscolhido = null;
-let gravarMeta = false;
 const ocupado = new Set();
 let ctxAtual = null;
 const qtd = (n, nome) => `${n} ${nome}${n === 1 ? '' : 's'}`;
@@ -82,7 +82,7 @@ async function gerarExcel(tipo, calc) {
       r = P.atualizarGestaoVisual(modelo.bytes, calc);
       msg = r.resumo.celulas ? `Gestão Visual atualizada: ${r.resumo.primarias} primárias mudaram.` : 'Gestão Visual já estava em dia; só a data de atualização mudou.';
     } else if (tipo === 'curva') {
-      r = P.atualizarCurvaS(modelo.bytes, calc, { gravarMeta });
+      r = P.atualizarCurvaS(modelo.bytes, calc);
       msg = `Curva S atualizada: ${r.resumo.realizado} fornos revestidos até hoje${r.resumo.metas ? `, meta gravada em ${r.resumo.metas} semanas` : ''}.`;
     } else {
       r = P.gerarEspelho(modelo.bytes, calc, bmEscolhido);
@@ -152,12 +152,9 @@ export function paginaDocumentos(ctx) {
         el('div', { class: 'toolbar' }, [botaoPdf('PDF do mapa', () => imprimirMapa(calc))]),
         excel('gestao')
       ]),
-      cartao(ic.curva(22), `Curva S · BM ${rotuloBm(bmEscolhido)}`, `${c.realizado} de ${c.meta} fornos revestidos (${nomeBm(bmEscolhido)}).`, [
-        el('div', { class: 'toolbar' }, [botaoPdf('PDF da Curva S', () => imprimirCurva(calc, bmEscolhido))]),
-        excel('curva', el('label', { class: 'doc-opcao' }, [
-          el('input', { type: 'checkbox', checked: gravarMeta, onchange: (ev) => { gravarMeta = ev.target.checked; } }),
-          el('span', {}, `Também gravar a meta do app (${c.meta} por BM) no previsto, do BM atual em diante`)
-        ]))
+      cartao(ic.curva(22), 'Curva S', `Contrato inteiro, como na planilha: ${curvaContrato(calc).realizado} de ${curvaContrato(calc).total} fornos revestidos.`, [
+        el('div', { class: 'toolbar' }, [botaoPdf('PDF da Curva S', () => imprimirCurva(calc))]),
+        excel('curva')
       ]),
       cartao(ic.camera(22), 'Checklist de entrega', `${qtd(rel.length, 'forno')} no BM ${rotuloBm(bmEscolhido)}; ${comFotos.length} com fotos no app.`, [
         el('div', { class: 'toolbar' }, [
@@ -216,30 +213,13 @@ function imprimirMapa(calc) {
   });
 }
 
-function imprimirCurva(calc, bmId) {
-  const c = curvaBm(calc, bmId);
-  const bms = bmsDoContrato(calc).map((b) => ({ ...b, rotulo: rotuloBm(b.bm), atual: b.bm === bmAtual() }));
+function imprimirCurva(calc) {
+  const c = curvaContrato(calc);
   abrirImpressao({
-    titulo: `Curva S de revestimento · BM ${rotuloBm(bmId)}`,
-    subtitulo: `${nomeBm(bmId)} · meta de ${c.meta} fornos · ${c.realizado} revestidos · situação em ${completa(hoje())}`,
+    titulo: 'Curva S de revestimento',
+    subtitulo: `${contratoAtivo().nome} · previsto ${c.total} fornos · realizado ${c.realizado} · situação em ${completa(hoje())}`,
     paisagem: true,
-    conteudo: [
-      graficoCurvaBm(c, { altura: 330 }),
-      el('table', { class: 'doc-tabela' }, [
-        el('thead', {}, el('tr', {}, ['Semana', 'Período', 'Meta', 'Revestidos', 'Meta acum.', 'Realizado acum.', 'Fornos'].map((t, i) => el('th', { class: i >= 2 && i <= 5 ? 'n' : '' }, t)))),
-        el('tbody', {}, c.pontos.map((p) => el('tr', { class: p.atual ? 'atual' : '' }, [
-          el('td', {}, p.semana),
-          el('td', {}, `${curta(p.ini)} a ${curta(p.fim)}`),
-          el('td', { class: 'n' }, String(p.meta)),
-          el('td', { class: 'n' }, p.realizado == null ? '' : String(p.realizado)),
-          el('td', { class: 'n' }, String(p.metaAcum)),
-          el('td', { class: 'n' }, p.realizadoAcum == null ? '' : String(p.realizadoAcum)),
-          el('td', {}, p.fornos.map((f) => f.replace('-', ' ')).join(', '))
-        ])))
-      ]),
-      el('h2', {}, 'Fornos revestidos por BM'),
-      graficoBms(bms, { altura: 200 })
-    ]
+    conteudo: [graficoCurvaS(c, { atualizadoEm: carimboAgora(), altura: 430 })]
   });
 }
 

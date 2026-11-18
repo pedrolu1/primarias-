@@ -220,3 +220,35 @@ table.data-table.tabela-estreita { min-width: 0; }
 @media (max-width: 720px) {
   .usuario-linha { grid-template-columns: 1fr; }
 }
+
+/* ---- Curva S no padrão da planilha (fundo branco, como no Excel) ---- */
+.curva-excel { margin: 0; background: #fff; color: #1a1a1a; border-radius: 12px; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 8px; font-family: Calibri, 'Segoe UI', Arial, sans-serif; }
+.curva-excel.compacta { padding: 10px 10px 8px; }
+.cs-cab { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; }
+.cs-logo { height: 34px; width: auto; object-fit: contain; }
+.cs-titulo { text-align: center; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.cs-titulo strong { font-size: 15px; font-weight: 700; color: #000; }
+.cs-atualizado { font-size: 11.5px; font-weight: 700; border: 1px solid #000; padding: 1px 8px; color: #000; }
+.cs-rolagem { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+.cs-svg { display: block; }
+.cs-svg .cs-grade { stroke: #d9d9d9; stroke-width: 1; }
+.cs-svg .cs-base { stroke: #7f7f7f; stroke-width: 1; }
+.cs-svg .cs-divisa { stroke: #bfbfbf; stroke-width: 1; }
+.cs-svg .cs-eixo { fill: #595959; font-size: 10.5px; }
+.cs-svg .cs-eixo-titulo { fill: #404040; font-size: 11px; font-weight: 700; }
+.cs-svg .cs-rotulo { fill: #262626; font-size: 9px; font-weight: 700; }
+.cs-svg .cs-semana { fill: #404040; font-size: 10px; }
+.cs-svg .cs-semana.forte { fill: #000; font-weight: 700; }
+.cs-svg .cs-bm { fill: #262626; font-size: 10.5px; font-weight: 700; }
+.cs-svg .cs-bm.id { fill: #7f7f7f; font-weight: 400; font-size: 10px; }
+.cs-svg .cs-atual { fill: rgba(237, 125, 49, 0.06); stroke: #ED7D31; stroke-width: 1.5; stroke-dasharray: 6 4; }
+.cs-svg .cs-atual-rot { fill: #fff; stroke: #ED7D31; stroke-width: 1; }
+.cs-svg .cs-atual-txt { fill: #c00000; font-size: 9.5px; font-weight: 800; }
+.cs-svg .alvo { fill: transparent; cursor: crosshair; }
+.cs-legenda { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; font-size: 12px; color: #262626; }
+.cs-legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.cs-legenda i.barra { width: 12px; height: 10px; display: inline-block; }
+.cs-legenda i.linha { width: 22px; height: 2px; display: inline-block; }
+.cs-legenda b { width: 7px; height: 7px; border-radius: 50%; border: 2px solid; margin-left: -18px; margin-right: 9px; background: #fff; }
+.curva-modo { display: inline-flex; gap: 4px; }
+.data-table td.nowrap, .data-table th.nowrap { white-space: nowrap; }
