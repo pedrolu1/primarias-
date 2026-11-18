@@ -12,19 +12,12 @@ import { NOME_STATUS } from '../../components/checklistFotos.js';
 import { ic } from '../../lib/icones.js';
 import { ETAPAS_MAPA, CLIENTE, SERVICO, contratoAtivo, localMedicao, rotulo } from '../../data/obra.js';
 import { curvaBm, curvaContrato, bmsDoContrato, bmAtual, contagemPorEtapa, relacaoDoBm } from '../../lib/calculo.js';
-import { lerModelo, guardarModelo } from '../../lib/modelos.js';
-import { baixar, nomeAtualizado, pdfChecklists, TIPO_XLSX, TIPO_XLSM } from '../../lib/documentos.js';
+import { MODELOS, modeloGuardado, estaOcupado, ocupar, escolherArquivo, gerarExcel, usarRedesenho } from '../../lib/excel.js';
+import { baixar, pdfChecklists } from '../../lib/documentos.js';
 import { hoje, completa, curta, nomeBm, rotuloBm, referenciaBm, periodoBm } from '../../lib/datas.js';
 import { toast } from '../../base/toast.js';
 
-const MODELOS = {
-  gestao: { chave: 'gestao-visual', nome: 'Gestão Visual', aceita: '.xlsx,.xlsm' },
-  curva: { chave: 'curva-s', nome: 'Curva S', aceita: '.xlsm,.xlsx' },
-  resumo: { chave: 'resumo-medicao', nome: 'Resumo da medição', aceita: '.xlsx,.xlsm' }
-};
-let modelos = null;
 let bmEscolhido = null;
-const ocupado = new Set();
 let ctxAtual = null;
 const qtd = (n, nome) => `${n} ${nome}${n === 1 ? '' : 's'}`;
 
@@ -32,74 +25,10 @@ function redesenhar() {
   if (ctxAtual && location.hash.slice(2) === 'documentos') ctxAtual.redesenhar();
 }
 
-async function carregarModelos() {
-  const lista = await Promise.all(Object.entries(MODELOS).map(async ([id, m]) => [id, await lerModelo(m.chave)]));
-  modelos = Object.fromEntries(lista);
-  redesenhar();
-}
-
-async function ocupar(id, tarefa) {
-  if (ocupado.has(id)) return;
-  ocupado.add(id);
-  redesenhar();
-  try {
-    await tarefa();
-  } catch (err) {
-    console.error(err);
-    toast(err?.message?.startsWith('Não achei') ? err.message : 'Não consegui gerar o arquivo. Confira se é a planilha certa.', 'error', 7000);
-  } finally {
-    ocupado.delete(id);
-    redesenhar();
-  }
-}
-
-function escolherArquivo(tipo, depois) {
-  const m = MODELOS[tipo];
-  const entrada = el('input', {
-    type: 'file', accept: m.aceita, style: { display: 'none' },
-    onchange: async (ev) => {
-      const arq = ev.target.files[0];
-      entrada.remove();
-      if (!arq) return;
-      modelos = { ...(modelos || {}), [tipo]: await guardarModelo(m.chave, arq) };
-      toast(`${m.nome}: planilha guardada neste aparelho.`, 'ok');
-      redesenhar();
-      depois?.();
-    }
-  });
-  document.body.appendChild(entrada);
-  entrada.click();
-}
-
-async function gerarExcel(tipo, calc) {
-  const modelo = modelos?.[tipo];
-  if (!modelo) return escolherArquivo(tipo, () => gerarExcel(tipo, calc));
-  await ocupar(`excel-${tipo}`, async () => {
-    const P = await import('../../lib/planilhas.js');
-    let r;
-    let msg;
-    if (tipo === 'gestao') {
-      r = P.atualizarGestaoVisual(modelo.bytes, calc);
-      msg = r.resumo.celulas ? `Gestão Visual atualizada: ${r.resumo.primarias} primárias mudaram.` : 'Gestão Visual já estava em dia; só a data de atualização mudou.';
-    } else if (tipo === 'curva') {
-      r = P.atualizarCurvaS(modelo.bytes, calc);
-      msg = `Curva S atualizada: ${r.resumo.realizado} fornos revestidos até hoje${r.resumo.metas ? `, meta gravada em ${r.resumo.metas} semanas` : ''}.`;
-    } else {
-      r = P.gerarEspelho(modelo.bytes, calc, bmEscolhido);
-      msg = `${r.resumo.nova ? 'Aba nova' : 'Aba atualizada'}: "${r.resumo.aba}", ${r.resumo.fornos} fornos${r.resumo.foraDoLimite ? ` (${r.resumo.foraDoLimite} não couberam)` : ''}.`;
-    }
-    baixar(r.bytes, nomeAtualizado(modelo.nome), /\.xlsm$/i.test(modelo.nome) ? TIPO_XLSM : TIPO_XLSX);
-    toast(msg, 'ok', 6000);
-  });
-}
-
 export function paginaDocumentos(ctx) {
   ctxAtual = ctx;
+  usarRedesenho(redesenhar);
   const { calc, ir } = ctx;
-  if (modelos === null) {
-    modelos = {};
-    carregarModelos();
-  }
   const atual = bmAtual();
   const bms = bmsDoContrato(calc);
   if (!bmEscolhido || !bms.some((b) => b.bm === bmEscolhido)) bmEscolhido = atual;
@@ -113,10 +42,10 @@ export function paginaDocumentos(ctx) {
     }, [`BM ${rotuloBm(b.bm)}`, el('small', {}, qtd(b.realizado, 'forno'))])))
   ]);
 
-  const excel = (tipo, extra = null) => {
+  const excel = (tipo, extra = null, opcoes = {}) => {
     const m = MODELOS[tipo];
-    const modelo = modelos?.[tipo];
-    const gerando = ocupado.has(`excel-${tipo}`);
+    const modelo = modeloGuardado(tipo);
+    const gerando = estaOcupado(`excel-${tipo}`);
     return el('div', { class: 'doc-excel' }, [
       el('div', { class: 'doc-excel-info' }, [
         el('span', { class: 'doc-excel-icone', html: ic.planilha(20) }),
@@ -127,7 +56,7 @@ export function paginaDocumentos(ctx) {
       ]),
       extra,
       el('div', { class: 'toolbar' }, [
-        el('button', { class: 'btn btn-primary btn-sm', type: 'button', disabled: gerando, onclick: () => gerarExcel(tipo, calc) }, [el('span', { html: gerando ? '' : ic.download(15), class: gerando ? 'spinner' : '', style: { display: 'inline-flex' } }), gerando ? 'Gerando…' : modelo ? 'Baixar preenchida' : 'Escolher a planilha']),
+        el('button', { class: 'btn btn-primary btn-sm', type: 'button', disabled: gerando, onclick: () => gerarExcel(tipo, calc, opcoes) }, [el('span', { html: gerando ? '' : ic.download(15), class: gerando ? 'spinner' : '', style: { display: 'inline-flex' } }), gerando ? 'Gerando…' : modelo ? 'Baixar preenchida' : 'Escolher a planilha']),
         modelo ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => escolherArquivo(tipo) }, 'Trocar arquivo') : null
       ])
     ]);
@@ -138,7 +67,7 @@ export function paginaDocumentos(ctx) {
     ...corpo
   ]);
   const botaoPdf = (rotulo, fn, id = null) => {
-    const gerando = id && ocupado.has(id);
+    const gerando = id && estaOcupado(id);
     return el('button', { class: 'btn btn-outline btn-sm', type: 'button', disabled: gerando, onclick: fn }, [el('span', { html: gerando ? '' : ic.imprimir(15), class: gerando ? 'spinner' : '', style: { display: 'inline-flex' } }), gerando ? 'Gerando…' : rotulo]);
   };
 
@@ -179,10 +108,11 @@ export function paginaDocumentos(ctx) {
       ]),
       cartao(ic.documento(22), `Espelho da medição · BM ${rotuloBm(bmEscolhido)}`, 'Relação dos fornos reparados no período, com o nº e o status do checklist (o resumo enviado à Ternium).', [
         el('div', { class: 'toolbar' }, [botaoPdf('PDF do espelho', () => imprimirEspelho(calc, bmEscolhido))]),
-        excel('resumo')
+        excel('resumo', null, { bm: bmEscolhido })
       ]),
-      cartao(ic.diario(22), 'RDO', 'Relatório diário de obra no modelo PLAN-RFX-002, montado pelos lançamentos e pelo diário do campo.', [
-        el('div', { class: 'toolbar' }, [el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: () => ir('rdo') }, [el('span', { html: ic.diario(15), style: { display: 'inline-flex' } }), 'Abrir o RDO do dia'])])
+      cartao(ic.diario(22), 'RDO', 'Relatório diário de obra igual à planilha PLAN-RFX-002. Cada RDO fechado no app vira uma aba nova, depois da última.', [
+        el('div', { class: 'toolbar' }, [el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: () => ir('rdo') }, [el('span', { html: ic.diario(15), style: { display: 'inline-flex' } }), 'Abrir o RDO do dia'])]),
+        excel('rdo')
       ])
     ])
   ];

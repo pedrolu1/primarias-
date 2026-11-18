@@ -7,10 +7,11 @@
 //   - Curva S: realizado de cada semana (e, se pedir, a meta do app no previsto).
 //   - Resumo da medição (espelho): uma aba nova para o BM, com a relação dos
 //     fornos, o número do checklist e o status.
+//   - RDO (PLAN-RFX-002): uma aba nova por dia, cópia da última.
 // Funciona no navegador e no Node (testes), sem DOM.
 import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
-import { PRIMARIAS, FORNOS, primariaPorId, contratoAtivo, localMedicao } from '../data/obra.js';
-import { INDICE_ETAPA as IDX, relacaoDoBm } from './calculo.js';
+import { PRIMARIAS, FORNOS, primariaPorId, contratoAtivo, localMedicao, MATERIAIS, EFETIVO_MODELO } from '../data/obra.js';
+import { INDICE_ETAPA as IDX, relacaoDoBm, rdoDoDia, observacoesSugeridas } from './calculo.js';
 import { iso, hoje, inicioDaSemana, somarDias, periodoBm, referenciaBm, completa, bmDaSemana } from './datas.js';
 
 // ---------------------------------------------------------------------------
@@ -179,6 +180,26 @@ export class Aba {
     }
     if (atual?.xml === xml) return false;
     l.celulas.set(col, { atributos: xml.slice(2, xml.indexOf('>')).replace(/\/$/, ''), interno: xml.endsWith('/>') ? null : xml.slice(xml.indexOf('>') + 1, -4), xml });
+    l.mudou = true;
+    return true;
+  }
+
+  /** Estilo (índice s) da célula, ou null. */
+  estilo(ref) {
+    const { col, r } = separar(ref);
+    const c = this.linha(r)?.celulas.get(col);
+    return c ? attr(` ${c.atributos}`, 's') : null;
+  }
+
+  /** Troca só o valor guardado de uma célula com fórmula (o Excel recalcula ao abrir). */
+  definirCache(ref, numero) {
+    const { col, r } = separar(ref);
+    const l = this.linha(r);
+    const c = l?.celulas.get(col);
+    if (!c?.interno || !/<f[\s>/]/.test(c.interno)) return false;
+    const interno = /<v>[\s\S]*?<\/v>/.test(c.interno) ? c.interno.replace(/<v>[\s\S]*?<\/v>/, `<v>${numero}</v>`) : `${c.interno}<v>${numero}</v>`;
+    const atributos = c.atributos.replace(/\st="[^"]*"/, '');
+    l.celulas.set(col, { atributos, interno, xml: `<c ${atributos.trim()}>${interno}</c>` });
     l.mudou = true;
     return true;
   }
@@ -471,8 +492,11 @@ const guid = () => '{xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx}'.replace(/[xy]/g, (c)
   return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16).toUpperCase();
 });
 
-/** Copia uma aba (com desenho e configuração de impressão) para uma aba nova no fim. */
-function clonarAba(pacote, origem, nome) {
+/**
+ * Copia uma aba (com desenho e configuração de impressão) para uma aba nova,
+ * no fim do livro ou, com logoDepois, logo depois da origem.
+ */
+function clonarAba(pacote, origem, nome, { logoDepois = false } = {}) {
   const n = proximoNumero(pacote, 'xl/worksheets/sheet', '.xml');
   const caminho = `xl/worksheets/sheet${n}.xml`;
   let xml = pacote.ler(origem.caminho).replace(/\sxr:uid="\{[^}]*\}"/, ` xr:uid="${guid()}"`);
@@ -517,8 +541,16 @@ function clonarAba(pacote, origem, nome) {
   const abas = abasDoLivro(pacote);
   const sheetId = Math.max(...abas.map((a) => a.sheetId)) + 1;
   const idxOrigem = abas.findIndex((a) => a.nome === origem.nome);
-  const idxNova = abas.length;
-  wb = wb.replace('</sheets>', `<sheet name="${esc(nome)}" sheetId="${sheetId}" r:id="rId${id}"/></sheets>`);
+  const idxNova = logoDepois ? idxOrigem + 1 : abas.length;
+  const tagNova = `<sheet name="${esc(nome)}" sheetId="${sheetId}" r:id="rId${id}"/>`;
+  if (idxNova < abas.length) {
+    // as abas depois da nova andam uma posição: nomes locais e aba ativa
+    let k = -1;
+    wb = wb.replace(/<sheet\b[^>]*\/>/g, (tag) => (++k === idxNova ? `${tagNova}${tag}` : tag));
+    wb = wb.replace(/(<definedName\b[^>]*localSheetId=")(\d+)(")/g, (_, a, n, b) => `${a}${Number(n) >= idxNova ? Number(n) + 1 : n}${b}`);
+  } else {
+    wb = wb.replace('</sheets>', `${tagNova}</sheets>`);
+  }
   const citar = (t) => `'${t.replace(/'/g, "''")}'`;
   const nomes = [...wb.matchAll(/<definedName\b[^>]*localSheetId="(\d+)"[^>]*>([\s\S]*?)<\/definedName>/g)].filter((m) => Number(m[1]) === idxOrigem);
   const novos = nomes.map((m) => {
@@ -555,6 +587,155 @@ function selecionarAba(pacote, nome) {
     return `<workbookView${sem}${k > 0 ? ` activeTab="${k}"` : ''}/>`;
   });
   pacote.gravar('xl/workbook.xml', wb);
+}
+
+// ---------------------------------------------------------------------------
+// RDO (PLAN-RFX-002): uma aba por dia, com o número no nome ("254"). A aba
+// nova é cópia da anterior e entra logo depois dela. Células usadas:
+// C1 nº · C2 data · B8, D8, F8, H8 e I8 os títulos e, da linha 9 à 39, os
+// itens · C40 observações · L efetivo realizado (pela função da coluna J) ·
+// F48/F49 clima do turno diurno · L, M e N os materiais (pela descrição da
+// coluna J) · A70 observações da contratante. Fórmulas não são tocadas.
+// ---------------------------------------------------------------------------
+const COLUNAS_ATIVIDADE = ['B', 'D', 'F', 'H', 'I'];
+const LIMPAR_ATIVIDADES = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+const normal = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+function abasDoRdo(pacote) {
+  return abasDoLivro(pacote)
+    .filter((a) => /^\d+$/.test(a.nome.trim()))
+    .map((a) => ({ ...a, numero: Number(a.nome.trim()) }))
+    .sort((a, b) => a.numero - b.numero);
+}
+const stringsDe = (pacote) => (pacote.existe('xl/sharedStrings.xml') ? lerStrings(pacote.ler('xl/sharedStrings.xml')) : []);
+const materialDaLinha = (aba, r) => {
+  const desc = aba.valor(`J${r}`);
+  return typeof desc === 'string' ? MATERIAIS.find((m) => desc.toUpperCase().includes(m.chave)) || null : null;
+};
+
+/** Última aba do RDO: número, data e acumulado de cada material. */
+export function lerRdoPlanilha(bytes) {
+  const pacote = abrirPacote(bytes);
+  const abas = abasDoRdo(pacote);
+  if (!abas.length) throw new Error('Não achei as abas numeradas do RDO. Confira se é a planilha PLAN-RFX-002.');
+  const strings = stringsDe(pacote);
+  const ultima = abas[abas.length - 1];
+  const aba = new Aba(pacote.ler(ultima.caminho), strings);
+  const c2 = aba.valor('C2');
+  const materiais = {};
+  for (let r = 44; r <= 60; r++) {
+    const m = materialDaLinha(aba, r);
+    if (!m) continue;
+    const n = aba.valor(`N${r}`);
+    const l = aba.valor(`L${r}`);
+    const ap = aba.valor(`M${r}`);
+    materiais[m.id] = typeof n === 'number' ? n : (Number(l) || 0) + (Number(ap) || 0);
+  }
+  return { numero: ultima.numero, data: typeof c2 === 'number' ? dataDoSerial(c2) : null, materiais, abas: abas.length };
+}
+
+/**
+ * Grava no livro do RDO os dias pedidos e todos os RDOs fechados no app que
+ * ainda não estão nele (número maior que o da última aba). Aba que já existe
+ * com o mesmo número e a mesma data é atualizada; com outra data, fica como
+ * está e volta em "conflitos".
+ */
+export function gravarRdos(bytes, calc, { datas = [] } = {}) {
+  const pacote = abrirPacote(bytes);
+  if (!abasDoRdo(pacote).length) throw new Error('Não achei as abas numeradas do RDO. Confira se é a planilha PLAN-RFX-002.');
+  const strings = stringsDe(pacote);
+  const ultimaDaPlanilha = abasDoRdo(pacote).pop().numero;
+  const fechados = Object.entries(calc.estado.rdos || {})
+    .filter(([, r]) => ['fechado', 'assinado'].includes(r?.status) && Number(r.numero) > ultimaDaPlanilha)
+    .map(([d]) => d);
+  const resumo = { gravadas: [], novas: 0, conflitos: [] };
+  let ultimaGravada = null;
+  for (const data of [...new Set([...fechados, ...datas])].sort()) {
+    const rdo = rdoDoDia(calc, data);
+    if (!rdo.numero) {
+      resumo.conflitos.push({ data, motivo: 'dia sem número de RDO' });
+      continue;
+    }
+    const abas = abasDoRdo(pacote);
+    let alvo = abas.find((a) => a.numero === rdo.numero);
+    let nova = false;
+    if (alvo) {
+      const c2 = new Aba(pacote.ler(alvo.caminho), strings).valor('C2');
+      if (typeof c2 === 'number' && dataDoSerial(c2) !== data) {
+        resumo.conflitos.push({ data, numero: rdo.numero, motivo: `a aba ${rdo.numero} da planilha é de ${completa(dataDoSerial(c2))}` });
+        continue;
+      }
+    } else {
+      const origem = [...abas].reverse().find((a) => a.numero < rdo.numero) || abas[abas.length - 1];
+      alvo = clonarAba(pacote, origem, String(rdo.numero), { logoDepois: true });
+      nova = true;
+      resumo.novas++;
+    }
+    const aba = new Aba(pacote.ler(alvo.caminho), strings);
+    preencherAbaRdo(aba, rdo);
+    pacote.gravar(alvo.caminho, aba.toString());
+    resumo.gravadas.push({ numero: rdo.numero, data, status: rdo.status, nova });
+    ultimaGravada = alvo.nome;
+  }
+  if (ultimaGravada) selecionarAba(pacote, ultimaGravada);
+  marcarParaRecalcular(pacote);
+  return { bytes: pacote.salvar(), resumo };
+}
+
+function preencherAbaRdo(aba, rdo) {
+  const s = rdo.salvo || {};
+  const def = (ref, v, estilo = null) => !aba.temFormula(ref) && aba.definir(ref, v, { estilo });
+  const limpar = (ref) => aba.valor(ref) !== null && def(ref, null);
+  def('C1', rdo.numero);
+  def('C2', { data: rdo.data });
+  aba.definirCache('C3', serialDe(rdo.data));
+
+  // registro das atividades
+  const estTitulo = aba.estilo('B8');
+  const estItem = aba.estilo('B9');
+  for (let r = 8; r <= 39; r++) for (const c of LIMPAR_ATIVIDADES) limpar(`${c}${r}`);
+  rdo.colunas.slice(0, COLUNAS_ATIVIDADE.length).forEach((col, k) => {
+    const c = COLUNAS_ATIVIDADE[k];
+    def(`${c}8`, col.titulo, estTitulo);
+    col.linhas.forEach((l, i) => l.texto && def(`${c}${9 + i}`, l.texto, estItem));
+  });
+  const obs = s.obs ?? observacoesSugeridas(rdo);
+  def('C40', obs || null);
+
+  // efetivo realizado, pela função escrita na coluna J
+  const efetivo = s.efetivo || {};
+  const funcoes = new Map([...EFETIVO_MODELO.moi, ...EFETIVO_MODELO.mod, ...EFETIVO_MODELO.equipamentos].map(([f, prev]) => [normal(f), [f, prev]]));
+  for (let r = 9; r <= 44; r++) {
+    const f = funcoes.get(normal(aba.valor(`J${r}`)));
+    if (f) def(`L${r}`, Number(efetivo[f[0]] ?? f[1]));
+  }
+  const soma = (de, ate) => {
+    let t = 0;
+    for (let r = de; r <= ate; r++) t += Number(aba.valor(`L${r}`)) || 0;
+    return t;
+  };
+  const moi = soma(9, 17);
+  const mod = soma(22, 34);
+  aba.definirCache('L18', moi);
+  aba.definirCache('L35', mod);
+  aba.definirCache('L36', moi + mod);
+
+  // clima do turno diurno
+  const clima = s.clima?.diurno || 'estavel';
+  def('F48', clima === 'estavel' ? 'X' : null);
+  def('F49', clima === 'chuvoso' ? 'X' : null);
+
+  // controle de produção
+  for (let r = 44; r <= 60; r++) {
+    const m = materialDaLinha(aba, r);
+    const v = m && rdo.materiais.find((x) => x.id === m.id);
+    if (!v) continue;
+    def(`L${r}`, v.anterior);
+    def(`M${r}`, v.aplicado);
+    if (aba.temFormula(`N${r}`)) aba.definirCache(`N${r}`, v.acumulado);
+    else def(`N${r}`, v.acumulado);
+  }
+  if (s.obsContratante) def('A70', s.obsContratante);
 }
 
 // ---------------------------------------------------------------------------

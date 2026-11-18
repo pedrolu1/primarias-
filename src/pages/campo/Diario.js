@@ -1,10 +1,11 @@
-// Diário do líder: registra o 5S, as ocorrências, o material e a segurança
-// do dia. Tudo vai para as observações do RDO, que o planejador fecha no
-// painel. As atividades do dia saem sozinhas dos lançamentos.
+// Diário do líder: registra o 5S, a sopragem dos fornos, as ocorrências, o
+// material e a segurança do dia. A sopragem vira a coluna "SOPRAGEM DOS
+// FORNOS" do RDO (não conta avanço); o resto vai para as observações. As
+// atividades do dia saem sozinhas dos lançamentos.
 import { el } from '../../base/dom.js';
 import { etiquetaEtapa, statusChip } from '../../components/base.js';
 import { ic } from '../../lib/icones.js';
-import { TIPOS_OCORRENCIA, contratoAtivo, blocosDa } from '../../data/obra.js';
+import { TIPOS_OCORRENCIA, contratoAtivo, blocosDa, FORNOS, FORNOS_POR_BLOCO } from '../../data/obra.js';
 import { rdoDoDia } from '../../lib/calculo.js';
 import { registrarOcorrencia, removerOcorrencia } from '../../lib/banco.js';
 import { autorDe } from '../../lib/acesso.js';
@@ -15,13 +16,15 @@ import { toast } from '../../base/toast.js';
 let dia = null;
 let tipo = '5s';
 let rascunho = '';
+let blocoSopragem = null;
+const soprados = new Set();
 const NOME_TIPO = Object.fromEntries(TIPOS_OCORRENCIA.map((t) => [t.id, t.nome]));
 const STATUS = { rascunho: 'RDO aberto', fechado: 'RDO fechado', assinado: 'RDO assinado', planilha: 'Emitido na planilha' };
 
 /** Começos de frase comuns, para digitar menos na frente do forno. */
 function atalhos(t, bloco) {
   return {
-    '5s': [`equipe realizou 5S e sopragem dos fornos no bloco ${bloco}`, 'limpeza e organização da área no fim do turno'],
+    '5s': [`equipe realizou 5S no bloco ${bloco}`, 'limpeza e organização da área no fim do turno'],
     ocorrencia: ['frente parada aguardando liberação da Ternium', 'equipe direcionada para '],
     material: ['abastecimento de andaime na interligação ', 'falta de material: '],
     seguranca: ['DDS realizado com a equipe', 'parada por sirene de emergência']
@@ -43,6 +46,22 @@ export function paginaDiario(ctx) {
   });
   const registrar = (ev) => {
     const t = rascunho.trim();
+    if (tipo === 'sopragem') {
+      if (!soprados.size) {
+        toast('Toque nos fornos que foram soprados.', 'info');
+        return;
+      }
+      const fornos = [...soprados].sort();
+      const lista = fornos.map((f) => f.replace('-', ' ')).join(', ');
+      registrarOcorrencia({ data: dia, tipo, texto: t || `Sopragem dos fornos ${lista}`, autor: autorDe(perfil), fornos });
+      soprados.clear();
+      rascunho = '';
+      vibrar(12);
+      tocar('ok');
+      toast(`Sopragem de ${fornos.length} forno${fornos.length === 1 ? '' : 's'} registrada. Entra no RDO do dia.`, 'ok');
+      redesenhar();
+      return;
+    }
     if (t.length < 4) {
       toast('Escreva o que aconteceu.', 'info');
       texto.focus();
@@ -61,12 +80,13 @@ export function paginaDiario(ctx) {
       type: 'button', role: 'radio', 'aria-checked': String(t.id === tipo), class: `tipo-op${t.id === tipo ? ' ativo' : ''}`,
       onclick: (ev) => { tipo = t.id; redesenhar(); }
     }, t.id === '5s' ? '5S' : t.nome.split(' ')[0]))),
-    texto,
-    el('div', { class: 'tipos-ocorrencia' }, atalhos(tipo, bloco).map((a) => el('button', {
+    tipo === 'sopragem' ? escolherFornos(calc, bloco, redesenhar) : null,
+    tipo === 'sopragem' ? null : texto,
+    tipo === 'sopragem' ? null : el('div', { class: 'tipos-ocorrencia' }, atalhos(tipo, bloco).map((a) => el('button', {
       type: 'button', class: 'tipo-op', style: { height: 'auto', minHeight: '34px', padding: '6px 12px', textAlign: 'left', fontWeight: 500 },
       onclick: () => { rascunho = rascunho.trim() ? `${rascunho.trim()}; ${a}` : a; texto.value = rascunho; texto.focus(); texto.setSelectionRange(rascunho.length, rascunho.length); }
     }, a.trim() + (a.endsWith(' ') ? '…' : '')))),
-    el('button', { type: 'button', class: 'btn btn-primary', onclick: registrar }, [el('span', { html: ic.plus(18) }), 'Registrar'])
+    el('button', { type: 'button', class: 'btn btn-primary', onclick: registrar }, [el('span', { html: ic.plus(18) }), tipo === 'sopragem' && soprados.size ? `Registrar sopragem (${soprados.size})` : 'Registrar'])
   ]);
 
   const meus = (o) => o.autor?.uid === perfil.uid;
@@ -111,4 +131,31 @@ export function paginaDiario(ctx) {
     registros,
     atividades
   ];
+}
+
+/** Sopragem: escolhe o bloco e toca nos fornos soprados no dia. */
+function escolherFornos(calc, blocoAtual, redesenhar) {
+  const bat = contratoAtivo().bateria;
+  const blocos = blocosDa(bat);
+  blocoSopragem ||= blocoAtual || blocos[0];
+  const fornos = FORNOS.filter((f) => f.bloco === blocoSopragem);
+  return el('div', { class: 'pilha', style: { gap: '10px' } }, [
+    el('p', { class: 'fraco', style: { fontSize: '13.5px' } }, 'Toque nos fornos soprados hoje. Entra na coluna "Sopragem dos fornos" do RDO e não muda o mapa.'),
+    el('div', { class: 'tipos-ocorrencia', role: 'radiogroup', 'aria-label': 'Bloco' }, blocos.map((bl) => el('button', {
+      type: 'button', role: 'radio', 'aria-checked': String(bl === blocoSopragem), class: `tipo-op${bl === blocoSopragem ? ' ativo' : ''}`,
+      onclick: () => { blocoSopragem = bl; redesenhar(); }
+    }, bl))),
+    el('div', { class: 'grade-fornos', style: { '--colunas': String(Math.min(FORNOS_POR_BLOCO, 6)) } }, fornos.map((f) => {
+      const marcado = soprados.has(f.id);
+      return el('button', {
+        type: 'button', class: `forno-op${marcado ? ' ativo' : ''}`, 'aria-pressed': String(marcado),
+        'aria-label': `Forno ${f.forno} do bloco ${f.bloco}`,
+        onclick: () => { if (marcado) soprados.delete(f.id); else soprados.add(f.id); redesenhar(); }
+      }, `F${String(f.forno).padStart(2, '0')}`);
+    })),
+    soprados.size ? el('div', { class: 'entre' }, [
+      el('span', { class: 'fraco', style: { fontSize: '13px' } }, [...soprados].sort().map((f) => f.replace('-', ' ')).join(', ')),
+      el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => { soprados.clear(); redesenhar(); } }, 'Limpar')
+    ]) : null
+  ]);
 }

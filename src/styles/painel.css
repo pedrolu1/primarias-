@@ -85,33 +85,52 @@ table.data-table.tabela-estreita { min-width: 0; }
 .pedido small { font-size: 12.5px; color: var(--text-2); }
 
 /* ---- RDO (formato do relatório em papel) ---- */
-.rdo-doc { background: #fbf7f2; color: #1d1714; border-radius: 10px; padding: 26px; font-size: 12.5px; line-height: 1.35; box-shadow: var(--shadow-lg); max-width: 1100px; }
-.rdo-doc h4 { font-family: var(--font-display); font-size: 15px; color: #1d1714; margin-bottom: 6px; }
-.rdo-doc table { width: 100%; border-collapse: collapse; }
-.rdo-doc th, .rdo-doc td { border: 1px solid #c9bfb6; padding: 5px 7px; text-align: left; vertical-align: top; }
-.rdo-doc th { background: #efe6dd; font-weight: 700; }
-.rdo-doc td.n, .rdo-doc th.n { text-align: center; }
-.rdo-cab { display: grid; grid-template-columns: 210px 1fr 170px; border: 1.5px solid #8f8277; margin-bottom: 14px; }
-.rdo-cab > div { padding: 8px 10px; }
-.rdo-cab > div + div { border-left: 1.5px solid #8f8277; }
-.rdo-cab .titulo { text-align: center; font-family: var(--font-display); font-size: 20px; font-weight: 700; }
-.rdo-cab .titulo small { display: block; font-family: var(--font-body); font-size: 12px; font-weight: 600; color: #5c524b; }
-.rdo-cab dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; }
-.rdo-cab dt { font-weight: 700; }
-.rdo-corpo { display: grid; grid-template-columns: 1.25fr 1fr; gap: 14px; }
-.rdo-atividades { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.rdo-atividades div { border: 1px solid #c9bfb6; border-radius: 6px; padding: 7px 8px; }
-.rdo-atividades b { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 4px; }
-.rdo-atividades b i { width: 9px; height: 9px; border-radius: 2px; }
-.rdo-atividades ul { list-style: none; font-size: 11.5px; }
-.rdo-vazio { color: #8f8277; font-style: italic; }
-.rdo-rodape { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 14px; margin-top: 14px; }
-.rdo-obs { margin-top: 14px; border: 1px solid #c9bfb6; border-radius: 6px; padding: 8px 10px; min-height: 60px; white-space: pre-wrap; }
-.rdo-ass { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 26px; text-align: center; font-size: 11.5px; }
-.rdo-ass div { border-top: 1px solid #1d1714; padding-top: 6px; }
-.rdo-doc .marcado { font-weight: 700; }
-@media (max-width: 900px) { .rdo-corpo, .rdo-rodape { grid-template-columns: 1fr; } .rdo-cab { grid-template-columns: 1fr; } .rdo-cab > div + div { border-left: none; border-top: 1.5px solid #8f8277; } }
-
+/* ---- RDO: folha igual à aba da planilha PLAN-RFX-002 ---- */
+.rdo-rolagem { overflow-x: auto; border-radius: 10px; box-shadow: var(--shadow-lg); -webkit-overflow-scrolling: touch; }
+.rdo-folha { background: #fff; color: #000; min-width: 980px; max-width: 1180px; padding: 18px; font-family: 'Century Gothic', 'URW Gothic', 'Avant Garde', Questrial, var(--font-body), sans-serif; font-size: 10.5px; line-height: 1.25; }
+.rdo-folha table { width: 100%; table-layout: fixed; border-collapse: collapse; border: 1.6px solid #000; }
+.rdo-folha td { display: table-cell; border: 1px solid #000; padding: 2px 4px; height: 19px; vertical-align: middle; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rdo-folha td.f-ss { border: none; }
+.rdo-folha td.f-base { border-bottom: 1px solid #000; }
+.rdo-folha td.f-topo { border-top: 1px solid #000; }
+.rdo-folha td.f-c { text-align: center; }
+.rdo-folha .f-rot { font-weight: 700; font-size: 9px; text-align: center; white-space: normal; }
+.rdo-folha .f-val { text-align: center; }
+.rdo-folha .f-tit1 { font-weight: 700; font-size: 15px; text-align: center; border-bottom: none; }
+.rdo-folha .f-tit2 { font-weight: 700; font-size: 13px; text-align: center; border-top: none; }
+.rdo-folha .f-info { font-size: 9.5px; white-space: normal; }
+.rdo-folha .f-logo { text-align: center; vertical-align: middle; }
+.rdo-folha .f-logo img { display: block; width: 74%; max-width: 160px; margin: 2px auto 6px; }
+.rdo-folha .f-logo b { font-size: 12px; }
+.rdo-folha .f-sec { font-weight: 700; font-size: 12px; text-align: center; }
+.rdo-folha .f-sec.f-grande { font-size: 14px; }
+.rdo-folha .f-cinza { background: #d9d9d9; }
+.rdo-folha .f-sub { font-weight: 700; font-size: 9px; text-align: center; }
+.rdo-folha .f-cab { font-weight: 700; font-size: 10px; text-align: center; white-space: normal; }
+.rdo-folha .f-cab.f-mini { font-size: 8px; }
+.rdo-folha .f-cab-b { font-weight: 700; font-size: 10px; }
+.rdo-folha .f-cab-b.f-c { text-align: center; }
+.rdo-folha .f-ativ-tit { font-size: 10px; white-space: normal; line-height: 1.15; height: 34px; vertical-align: middle; }
+.rdo-folha .f-item { font-size: 11px; padding-left: 6px; overflow: visible; }
+.rdo-folha .f-item.f-ativ-tit { height: 19px; }
+.rdo-folha .f-item.f-aviso { font-style: italic; color: #7f0000; }
+.rdo-folha .f-fun { font-size: 10px; }
+.rdo-folha .f-fun.f-mat { font-size: 9.5px; }
+.rdo-folha .f-subtotal { background: #ccffff; font-weight: 700; }
+.rdo-folha .f-subtotal.f-c { font-weight: 400; }
+.rdo-folha .f-total { font-weight: 700; font-size: 11px; }
+.rdo-folha .f-preto { background: #000; }
+.rdo-folha .f-azul { background: #ddebf7; }
+.rdo-folha .f-obs-rot { border: none; border-top: 1px solid #000; border-bottom: 1px solid #000; font-size: 9px; text-align: right; vertical-align: middle; }
+.rdo-folha .f-obs { border: none; border-top: 1px solid #000; border-bottom: 1px solid #000; font-size: 9.5px; text-align: center; white-space: pre-wrap; overflow: visible; text-overflow: clip; height: 100px; }
+.rdo-folha .f-hor { text-align: center; font-size: 10px; }
+.rdo-folha .f-clima-cab { font-size: 11px; }
+.rdo-folha .f-clima { font-weight: 700; font-size: 9px; }
+.rdo-folha .f-ass-cab { font-weight: 700; font-size: 11px; text-align: center; border-bottom: none; }
+.rdo-folha .f-ass { height: 90px; border-top: none; }
+.rdo-folha .f-linha-obs { height: 44px; white-space: pre-wrap; text-align: center; font-size: 10px; }
+.rdo-cartao-folha { display: flex; flex-direction: column; gap: 10px; }
+.rdo-aviso-num { font-size: 13px; color: var(--text-2); }
 .rdo-edicao { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 
 /* ---- Configuração ---- */
@@ -147,8 +166,17 @@ table.data-table.tabela-estreita { min-width: 0; }
   body::before, body::after { display: none; }
   .desktop-sidebar, .desktop-topbar, .nao-imprimir, .demo-pilula, canvas.faiscas { display: none !important; }
   .desktop-content { padding: 0; }
-  .rdo-doc { box-shadow: none; border-radius: 0; padding: 0; max-width: none; }
-  @page { size: A4; margin: 12mm; }
+  :root { color-scheme: light; }
+  html, body, .desktop-shell, .desktop-main, .desktop-content { background: #fff !important; }
+  .toast-stack { display: none !important; }
+  .rdo-rolagem { box-shadow: none; overflow: visible; border-radius: 0; }
+  /* a folha mantém o desenho da tela, reduzida para caber numa A4 em pé */
+  .rdo-folha { width: 1120px; min-width: 0; max-width: none; padding: 0; zoom: 0.655; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rdo-folha td { height: 17px; }
+  .rdo-folha .f-obs { height: 84px; }
+  .rdo-folha .f-ass { height: 70px; }
+  .rdo-folha .f-linha-obs { height: 34px; }
+  @page { size: A4; margin: 7mm; }
 }
 
 /* ---- Folha de impressão (documentos em PDF) ---- */

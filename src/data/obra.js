@@ -32,10 +32,10 @@ export const contratoAtivo = () => CONTRATOS.find((c) => c.ativo);
 // também leva o número da etapa.
 export const ETAPAS = [
   { id: 'andaime', nome: 'Montagem de andaime', curto: 'Montagem de andaime', rdo: 'MONTAGEM DE ANDAIME', nivel: 'cabeceira', cor: '#3987e5' },
-  { id: 'demolicao', nome: 'Demolição de manilhas', curto: 'Demolição', rdo: 'DEMOLIÇÃO DAS MANILHAS', nivel: 'primaria', cor: '#d95926' },
-  { id: 'assentamento', nome: 'Assentamento / concretagem de manilhas', curto: 'Assentamento', rdo: 'ASSENTAMENTO / CONCRETAGEM DAS MANILHAS', nivel: 'primaria', cor: '#9085e9' },
-  { id: 'injetbar', nome: 'Revestimento com Injetbar', curto: 'Injetbar', rdo: 'REVESTIMENTO COM INJETBAR', nivel: 'primaria', cor: '#d55181' },
-  { id: 'massa1200', nome: 'Revestimento com massa 1200', curto: 'Massa 1200', rdo: 'REVESTIMENTO COM MASSA 1200', nivel: 'primaria', cor: '#1f9a3a' },
+  { id: 'demolicao', nome: 'Demolição de manilhas', curto: 'Demolição', rdo: 'DEMOLIÇÃO DE MANILHAS', nivel: 'primaria', cor: '#d95926' },
+  { id: 'assentamento', nome: 'Assentamento / concretagem de manilhas', curto: 'Assentamento', rdo: 'ASSENTAMENTO DE MANILHAS', nivel: 'primaria', cor: '#9085e9' },
+  { id: 'injetbar', nome: 'Revestimento com Injetbar', curto: 'Injetbar', rdo: 'APLICAÇÃO DE INJETBAR', nivel: 'primaria', cor: '#d55181' },
+  { id: 'massa1200', nome: 'Revestimento com massa 1200', curto: 'Massa 1200', rdo: 'APLICAÇÃO DE MASSA 1200', nivel: 'primaria', cor: '#1f9a3a' },
   { id: 'desmontagem', nome: 'Desmontagem de andaime', curto: 'Desmontagem de andaime', rdo: 'DESMONTAGEM DE ANDAIME', nivel: 'cabeceira', cor: '#7f8aa3', extra: true }
 ];
 export const etapaPorId = Object.fromEntries(ETAPAS.map((e, i) => [e.id, { ...e, ordem: i }]));
@@ -47,11 +47,11 @@ export const NIVEL_NOME = { primaria: 'por primária', cabeceira: 'por lado do f
 
 // Consumo por primária (aba RASCUNHO do RDO) e a etapa em que é aplicado.
 export const MATERIAIS = [
-  { id: 'manilha', nome: 'Manilha refratária (monolítica)', unidade: 'PÇ', porPrimaria: 1, etapa: 'assentamento' },
-  { id: 'castfire', nome: 'Concreto isolante (Cast Fire I RC)', unidade: 'KG', porPrimaria: 50, etapa: 'assentamento' },
-  { id: 'didurit', nome: 'Concreto refratário denso (Didurit F55-5-BR)', unidade: 'KG', porPrimaria: 25, etapa: 'assentamento' },
-  { id: 'injetbar', nome: 'Sílica líquida (Injetbar CK)', unidade: 'KG', porPrimaria: 30, etapa: 'injetbar' },
-  { id: 'silplate', nome: 'Massa de fibra isolante (Silplate 1200 WR)', unidade: 'KG', porPrimaria: 100, etapa: 'massa1200' }
+  { id: 'manilha', nome: 'Manilha refratária (monolítica)', unidade: 'PÇ', porPrimaria: 1, etapa: 'assentamento', chave: 'MANILHA' },
+  { id: 'castfire', nome: 'Concreto isolante (Cast Fire I RC)', unidade: 'KG', porPrimaria: 50, etapa: 'assentamento', chave: 'CAST FIRE' },
+  { id: 'didurit', nome: 'Concreto refratário denso (Didurit F55-5-BR)', unidade: 'KG', porPrimaria: 25, etapa: 'assentamento', chave: 'DIDURIT' },
+  { id: 'injetbar', nome: 'Sílica líquida (Injetbar CK)', unidade: 'KG', porPrimaria: 30, etapa: 'injetbar', chave: 'INJETBAR' },
+  { id: 'silplate', nome: 'Massa de fibra isolante (Silplate 1200 WR)', unidade: 'KG', porPrimaria: 100, etapa: 'massa1200', chave: 'SILPLATE' }
 ];
 
 // Efetivo previsto do modelo de RDO (turno diurno).
@@ -91,6 +91,7 @@ export const EMPRESAS_DESVIO = ['Reframax', 'Ternium', 'Não aplicável'];
 // Registros do dia que vão para as observações do RDO.
 export const TIPOS_OCORRENCIA = [
   { id: '5s', nome: '5S (organização e limpeza)' },
+  { id: 'sopragem', nome: 'Sopragem dos fornos' },
   { id: 'ocorrencia', nome: 'Ocorrência' },
   { id: 'material', nome: 'Material / abastecimento' },
   { id: 'seguranca', nome: 'Segurança' }
@@ -110,7 +111,27 @@ export const SLOTS_FOTO = [
 ];
 
 // RDO: um por dia útil; a numeração continua a da planilha (ajustável em Configuração).
-export const RDO_ULTIMO = { numero: 234, data: '2026-10-23' };
+// Último RDO da planilha PLAN-RFX-002 (aba 253) e o acumulado de materiais
+// dele. A sincronização com a pasta atualiza isso pelo Excel.
+export const RDO_ULTIMO = {
+  numero: 253,
+  data: '2026-11-17',
+  materiais: { manilha: 1320, castfire: 66000, didurit: 33450, injetbar: 19620, silplate: 65400 }
+};
+
+// Ordem das colunas do "Registro das Atividades" nas abas recentes do RDO e o
+// título da sopragem, que o líder registra no Diário (não conta avanço).
+export const ORDEM_RDO = ['desmontagem', 'andaime', 'sopragem', 'demolicao', 'assentamento', 'injetbar', 'massa1200'];
+export const TITULO_SOPRAGEM = 'SOPRAGEM DOS FORNOS';
+
+// Feriados nacionais: dia sem expediente para a numeração do RDO, a não ser
+// que tenha atividade lançada (como no Finados de 2026, que teve RDO).
+export const FERIADOS = [
+  '2026-01-01', '2026-02-16', '2026-02-17', '2026-04-03', '2026-04-21', '2026-05-01', '2026-06-04',
+  '2026-09-07', '2026-10-12', '2026-11-02', '2026-11-20', '2026-12-25',
+  '2027-01-01', '2027-02-08', '2027-02-09', '2027-03-26', '2027-04-21', '2027-05-01', '2027-05-27',
+  '2027-09-07', '2027-10-12', '2027-11-02', '2027-11-15', '2027-11-20', '2027-12-25'
+];
 
 export const PAPEIS = {
   lider: { nome: 'Líder', desc: 'Lança o avanço e tira as fotos do checklist', campo: true },

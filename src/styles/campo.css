@@ -338,3 +338,7 @@
 .registro:last-child { border-bottom: none; }
 .registro p { font-size: 14.5px; line-height: 1.45; }
 .registro small { font-size: 12.5px; color: var(--text-2); }
+/* sopragem: grade de fornos do bloco */
+.grade-fornos { display: grid; grid-template-columns: repeat(var(--colunas, 6), minmax(0, 1fr)); gap: 6px; }
+.forno-op { height: 44px; border-radius: var(--r-md, 10px); border: 1px solid var(--border); background: var(--bg-2); color: var(--text-1); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.forno-op.ativo { background: var(--accent-grad); color: #fff; border-color: transparent; }

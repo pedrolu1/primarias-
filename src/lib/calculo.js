@@ -5,7 +5,7 @@ import { SEED_BATERIAS, SEED_EPOCH, SEED_VALORES_POR_PRIMARIA } from '../data/se
 import { SEED_CURVA } from '../data/curva-seed.js';
 import {
   PRIMARIAS, FORNOS, ETAPAS, etapaPorId, contratoAtivo, blocosDa, fornoPorId, primariaPorId,
-  MATERIAIS, primariasDoAlvo, BATERIAS, RDO_ULTIMO, noMeio, SLOTS_FOTO
+  MATERIAIS, primariasDoAlvo, BATERIAS, RDO_ULTIMO, noMeio, SLOTS_FOTO, ORDEM_RDO, TITULO_SOPRAGEM, FERIADOS
 } from '../data/obra.js';
 import { somarDias, semana, hoje, diaUtil, diaUtilAnterior, bm, bmDaSemana, semanasDoBm, periodoBm, bmsEntre, inicioDaSemana } from './datas.js';
 
@@ -335,47 +335,172 @@ export function primariasDoDia(calc, data, etapaId) {
   return PRIMARIAS.filter((p) => p.bateria === bat && calc.feitas[p.idx][e] === data).map((p) => p.id);
 }
 
-export const rdoUltimo = (calc) => calc.estado.config?.rdoUltimo || RDO_ULTIMO;
+/**
+ * Último RDO emitido na planilha (número, data e acumulado de materiais). Vale
+ * o mais recente entre o que veio com o app e o que a sincronização gravou.
+ */
+export function rdoUltimo(calc) {
+  const c = calc.estado.config?.rdoUltimo;
+  return c?.data && c.data >= RDO_ULTIMO.data ? { ...c, materiais: c.materiais || (c.data === RDO_ULTIMO.data ? RDO_ULTIMO.materiais : null) } : RDO_ULTIMO;
+}
+
+// ---------------------------------------------------------------------------
+// RDO no formato das abas recentes da PLAN-RFX-002: até 5 colunas de
+// atividades (B, D, F, H e I), título em maiúsculas na linha 8 e um item por
+// linha, da 9 à 39 ("B6 - F16 - LM - P01", "B6 - F08 - LM/LC").
+// ---------------------------------------------------------------------------
+export const COLUNAS_RDO = 5;
+export const LINHAS_RDO = 31;
+const nomeForno = (fid) => fid.replace('-', ' - ');
+const pn = (p) => `P${String(p.p).padStart(2, '0')}`;
+
+/** Itens de uma atividade, como a equipe escreve no RDO. */
+export function itensRdo(prims, etapaId) {
+  const nivel = etapaPorId[etapaId].nivel;
+  const porForno = new Map();
+  for (const id of prims) {
+    const p = primariaPorId[id];
+    if (!p) continue;
+    if (!porForno.has(p.fornoId)) porForno.set(p.fornoId, []);
+    porForno.get(p.fornoId).push(p);
+  }
+  const fornos = [...porForno.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const lados = (ps) => ['LM', 'LC'].map((lado) => ps.filter((p) => p.lado === lado).sort((a, b) => a.p - b.p)).filter((l) => l.length);
+  const umaPorLinha = () => fornos.flatMap(([fid, ps]) => lados(ps).flat().map((p) => `${nomeForno(fid)} - ${p.lado} - ${pn(p)}`));
+  const agrupado = () => fornos.flatMap(([fid, ps]) => {
+    const ls = lados(ps);
+    if (nivel !== 'primaria' && ls.length === 2) return [`${nomeForno(fid)} - LM/LC`];
+    if (nivel === 'primaria' && ps.length === 6) return [`${nomeForno(fid)} - LM/LC`];
+    return ls.flatMap((l) => (nivel !== 'primaria' || l.length === 3 ? [`${nomeForno(fid)} - ${l[0].lado}`] : l.map((p) => `${nomeForno(fid)} - ${p.lado} - ${pn(p)}`)));
+  });
+  // demolição e assentamento vão uma primária por linha, como na planilha; se
+  // não couber na coluna, agrupa por forno e lado
+  if (['demolicao', 'assentamento'].includes(etapaId)) {
+    const linhas = umaPorLinha();
+    if (linhas.length <= LINHAS_RDO) return linhas;
+  }
+  return agrupado();
+}
+
+/** Fornos soprados no dia (registrados no Diário). */
+export function sopragemDoDia(calc, data) {
+  const fornos = new Set();
+  for (const o of calc.estado.ocorrencias || []) {
+    if (o.data !== data || o.status === 'cancelado' || o.tipo !== 'sopragem') continue;
+    for (const f of o.fornos || []) if (fornoPorId[f]) fornos.add(f);
+  }
+  return [...fornos].sort();
+}
+
+/**
+ * Distribui as atividades nas 5 colunas. Com mais de 5, a coluna mais curta
+ * recebe a próxima atividade embaixo (linha em branco e o título).
+ */
+export function colunasRdo(atividades) {
+  const colunas = atividades.map((a) => ({ blocos: [a], linhas: a.itens.length }));
+  while (colunas.length > COLUNAS_RDO) {
+    let melhor = null;
+    for (let i = 0; i < colunas.length - 1; i++) {
+      const soma = colunas[i].linhas + 2 + colunas[i + 1].linhas;
+      if (!melhor || soma < melhor.soma) melhor = { i, soma };
+    }
+    const [a, b] = colunas.splice(melhor.i, 2);
+    colunas.splice(melhor.i, 0, { blocos: [...a.blocos, ...b.blocos], linhas: melhor.soma });
+  }
+  return colunas.map((c) => {
+    const linhas = [];
+    c.blocos.forEach((b, k) => {
+      if (k > 0) linhas.push({ texto: '' }, { texto: b.titulo, titulo: true });
+      for (const t of b.itens) linhas.push({ texto: t });
+    });
+    // o que não cabe nas 31 linhas fica numa linha de aviso
+    if (linhas.length > LINHAS_RDO) {
+      const sobra = linhas.length - (LINHAS_RDO - 1);
+      linhas.splice(LINHAS_RDO - 1, linhas.length, { texto: `E MAIS ${sobra} ITENS`, aviso: true });
+    }
+    return { titulo: c.blocos[0].titulo, cor: c.blocos[0].cor, blocos: c.blocos, linhas };
+  });
+}
+
+/** Dias que tiveram algum serviço lançado ou registrado (para numerar o RDO). */
+const diasComServico = new WeakMap();
+function diaComServico(calc, data) {
+  if (!diasComServico.has(calc)) {
+    const dias = new Set();
+    const bat = contratoAtivo().bateria;
+    for (const p of PRIMARIAS) {
+      if (p.bateria !== bat) continue;
+      for (const d of calc.feitas[p.idx]) if (d) dias.add(d);
+    }
+    for (const o of calc.estado.ocorrencias || []) if (o.status !== 'cancelado') dias.add(o.data);
+    diasComServico.set(calc, dias);
+  }
+  return diasComServico.get(calc).has(data);
+}
+
+/** Dia com RDO: dia útil que não é feriado, ou qualquer dia com serviço. */
+export const temExpediente = (calc, data) => (diaUtil(data) && !FERIADOS.includes(data)) || Boolean(calc.estado.rdos?.[data]) || diaComServico(calc, data);
 
 export function rdoDoDia(calc, data) {
   const bat = contratoAtivo().bateria;
-  const atividades = ETAPAS.map((et) => {
+  const salvo = calc.estado.rdos[data] || null;
+  const etapas = ETAPAS.map((et) => {
     const prims = primariasDoDia(calc, data, et.id);
-    return { etapa: et, prims, linhas: resumoAlvos(prims, et.id) };
-  }).filter((a) => a.prims.length);
+    return { id: et.id, etapa: et, prims, linhas: resumoAlvos(prims, et.id), titulo: et.rdo, cor: et.cor, itens: itensRdo(prims, et.id) };
+  });
+  const atividades = etapas.filter((a) => a.prims.length);
+  const soprados = sopragemDoDia(calc, data);
+  const sopragem = soprados.length ? { id: 'sopragem', titulo: TITULO_SOPRAGEM, cor: '#a2a9b8', fornos: soprados, itens: soprados.map((f) => `${nomeForno(f)} - LM/LC`) } : null;
+  const naOrdem = ORDEM_RDO.map((id) => (id === 'sopragem' ? sopragem : atividades.find((a) => a.id === id))).filter(Boolean);
+  const colunas = colunasRdo(naOrdem);
+
+  // materiais: o anterior continua o acumulado da última aba da planilha; o
+  // aplicado sai dos lançamentos (ou do que o planejador corrigiu no RDO)
   const daBat = PRIMARIAS.filter((p) => p.bateria === bat);
-  const materiais = MATERIAIS.map((m) => {
+  const aplicadoNoDia = (m, d) => {
+    const fixo = calc.estado.rdos[d]?.materiais?.[m.id];
+    if (fixo != null) return Number(fixo) || 0;
     const e = IDX[m.etapa];
-    let anterior = 0;
-    let aplicado = 0;
-    for (const p of daBat) {
-      const d = calc.feitas[p.idx][e];
-      if (!d || d > data) continue;
-      if (d === data) aplicado++;
-      else anterior++;
+    return daBat.filter((p) => calc.feitas[p.idx][e] === d).length * m.porPrimaria;
+  };
+  const ultimo = rdoUltimo(calc);
+  const materiais = MATERIAIS.map((m) => {
+    const aplicado = aplicadoNoDia(m, data);
+    let anterior;
+    if (ultimo.materiais?.[m.id] != null && data > ultimo.data) {
+      anterior = Number(ultimo.materiais[m.id]) || 0;
+      for (let d = somarDias(ultimo.data, 1); d < data; d = somarDias(d, 1)) anterior += aplicadoNoDia(m, d);
+    } else {
+      const e = IDX[m.etapa];
+      anterior = daBat.filter((p) => calc.feitas[p.idx][e] && calc.feitas[p.idx][e] < data).length * m.porPrimaria;
     }
-    return { ...m, anterior: anterior * m.porPrimaria, aplicado: aplicado * m.porPrimaria, acumulado: (anterior + aplicado) * m.porPrimaria };
+    return { ...m, anterior, aplicado, acumulado: anterior + aplicado, calculado: salvo?.materiais?.[m.id] == null };
   });
   const ocorrencias = (calc.estado.ocorrencias || []).filter((o) => o.data === data && o.status !== 'cancelado').sort((a, b) => (a.criadoEmLocal || 0) - (b.criadoEmLocal || 0));
-  const salvo = calc.estado.rdos[data] || null;
-  const ultimo = rdoUltimo(calc);
   // até o último RDO da planilha, o relatório já foi emitido fora do app
   const status = salvo?.status || (data <= ultimo.data ? 'planilha' : 'rascunho');
-  return { data, numero: salvo?.numero ?? numeroRdo(calc, data), atividades, materiais, ocorrencias, salvo, status };
+  return { data, numero: numeroRdo(calc, data), atividades, sopragem, colunas, materiais, ocorrencias, salvo, status, expediente: temExpediente(calc, data) };
 }
 
-/** Numeração continua a da planilha: um RDO por dia útil depois do último emitido. */
+/**
+ * Numeração: continua a da planilha. O RDO fechado guarda o número; o aberto
+ * conta, a partir do último numerado, os dias com expediente ou com serviço.
+ */
 export function numeroRdo(calc, data) {
+  const rdos = calc.estado.rdos || {};
+  if (rdos[data]?.numero) return Number(rdos[data].numero);
   const ultimo = rdoUltimo(calc);
-  if (data <= ultimo.data) return null;
-  let n = Number(ultimo.numero);
-  for (let d = somarDias(ultimo.data, 1); d <= data; d = somarDias(d, 1)) if (diaUtil(d)) n++;
-  return diaUtil(data) ? n : null;
+  if (data <= ultimo.data || !temExpediente(calc, data)) return null;
+  let ancora = { data: ultimo.data, numero: Number(ultimo.numero) };
+  for (const [d, r] of Object.entries(rdos)) if (r?.numero && d > ancora.data && d < data) ancora = { data: d, numero: Number(r.numero) };
+  let n = ancora.numero;
+  for (let d = somarDias(ancora.data, 1); d <= data; d = somarDias(d, 1)) if (temExpediente(calc, d)) n++;
+  return n;
 }
 
 /** Texto das observações do RDO montado a partir do que o campo registrou no dia. */
 export function observacoesSugeridas(rdo) {
-  const textos = rdo.ocorrencias.map((o) => o.texto.trim().replace(/\.$/, '')).filter(Boolean);
+  const textos = rdo.ocorrencias.filter((o) => o.tipo !== 'sopragem').map((o) => o.texto.trim().replace(/\.$/, '')).filter(Boolean);
   if (!textos.length) return '';
   return `A REFRAMAX INFORMA QUE ${textos.join('; ').toUpperCase()}.`;
 }

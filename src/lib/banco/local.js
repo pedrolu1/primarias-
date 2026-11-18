@@ -97,8 +97,8 @@ export function decidirCorrecao(id, aprovar, por, resposta = '') {
 // ---------------------------------------------------------------------------
 // Registros do dia (5S, ocorrências), RDO, desvios, configuração e base
 // ---------------------------------------------------------------------------
-export function registrarOcorrencia({ data, tipo, texto, autor }) {
-  const o = { id: novoId(), data, tipo, texto: texto.trim(), autor, criadoEmLocal: Date.now(), status: 'valido' };
+export function registrarOcorrencia({ data, tipo, texto, autor, fornos = null }) {
+  const o = { id: novoId(), data, tipo, texto: texto.trim(), autor, criadoEmLocal: Date.now(), status: 'valido', ...(fornos?.length ? { fornos } : {}) };
   gravar((e) => ({ ocorrencias: [...e.ocorrencias, o] }));
   return o;
 }
