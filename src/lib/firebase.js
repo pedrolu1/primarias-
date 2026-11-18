@@ -6,8 +6,12 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
+import { CONFIG_FIREBASE } from './firebase-config.js';
 
-const firebaseConfig = {
+// As chaves vêm de src/lib/firebase-config.js; variáveis VITE_FIREBASE_* (arquivo
+// .env ou o build) têm prioridade. Com VITE_DEMO=1 (npm run demo), o app ignora
+// as chaves e roda no modo demonstração, com os dados só no navegador.
+const doAmbiente = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -15,9 +19,9 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
+const demo = import.meta.env.VITE_DEMO === '1';
+const firebaseConfig = demo ? {} : doAmbiente.apiKey ? doAmbiente : CONFIG_FIREBASE || {};
 
-// Sem as chaves do Firebase (desenvolvimento local), o app roda no modo
-// demonstração, com os dados guardados só no navegador.
 export const firebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
 let app;

@@ -6,6 +6,7 @@
   "description": "App Primárias: lançamento e acompanhamento da substituição das válvulas primárias dos fornos da coqueria.",
   "scripts": {
     "dev": "vite",
+    "demo": "VITE_DEMO=1 vite",
     "build": "vite build",
     "preview": "vite preview",
     "icones": "node scripts/gerar-icones.mjs"

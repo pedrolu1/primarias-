@@ -34,42 +34,35 @@ fornos da coqueria. Publicado em https://reframax-primarias.netlify.app (site
 
 ```bash
 npm install
-npm run dev      # sem o arquivo .env: modo demonstração, dados só no navegador
+npm run dev      # com o banco online (chaves em src/lib/firebase-config.js)
+npm run demo     # modo demonstração, dados só no navegador
 npm run build    # gera dist/
 ```
 
-Para usar o banco online no computador, copie `.env.example` para `.env` e
-preencha com as chaves do projeto Firebase.
+Para apontar para outro projeto Firebase sem mexer no código, copie
+`.env.example` para `.env` e preencha as chaves.
 
 ## Colocar no ar pela primeira vez
 
 1. **Firebase** (console.firebase.google.com, com a conta Google da empresa):
-   - Adicionar projeto, por exemplo `reframax-primarias` (Google Analytics pode
+   - Criar projeto, por exemplo `reframax-primarias` (Google Analytics pode
      ficar desligado).
+   - Na página do projeto, ícone `</>` (Web) → registrar o app → copiar o bloco
+     `firebaseConfig` para `src/lib/firebase-config.js` (as chaves não são senha:
+     vão dentro do app de qualquer jeito).
    - Authentication → Começar → Método de login → E-mail/senha → Ativar.
-   - Authentication → Settings → Domínios autorizados → adicionar
-     `reframax-primarias.netlify.app`.
    - Firestore Database → Criar banco de dados → local `southamerica-east1`
-     (São Paulo) → modo de produção. Depois, na aba Regras, colar o conteúdo de
+     (São Paulo) → modo de produção. Na aba Regras, colar o conteúdo de
      `firestore.rules` e Publicar.
-   - Configurações do projeto (engrenagem) → Seus apps → ícone `</>` (Web) →
-     registrar o app → copiar o bloco `firebaseConfig`.
-2. **GitHub** (este repositório → Settings → Secrets and variables → Actions →
-   New repository secret):
-   - `FIREBASE_CONFIG`: o bloco `firebaseConfig` inteiro, do jeito que o console
-     mostra.
-   - `NETLIFY_AUTH_TOKEN`: token pessoal da Netlify (User settings →
-     Applications → Personal access tokens).
-3. **Publicar:** aba Actions → Publicar → Run workflow. Depois disso, cada push
-   na `main` publica sozinho.
-4. **Primeira conta:** abra o app e toque em "Criar conta". Essa conta vira o
+2. **Publicar:** cada push na `main` monta o app no GitHub Actions. Com o secret
+   `NETLIFY_AUTH_TOKEN` (token pessoal da Netlify) no repositório, ele também
+   publica; sem o secret, publique pelo conector da Netlify do Claude.
+3. **Primeira conta:** abra o app e toque em "Criar conta". Essa conta vira o
    dono do app; as próximas aparecem para ele liberar na tela Usuários.
-5. **Senha provisória (opcional):** Firebase → Configurações do projeto → Contas
+4. **Senha provisória (opcional):** Firebase → Configurações do projeto → Contas
    de serviço → Gerar nova chave privada. Na Netlify, site `reframax-primarias`
    → Site configuration → Environment variables → `FIREBASE_SERVICE_ACCOUNT`
    com o conteúdo do arquivo `.json`.
-6. **Acesso ao site:** se a proteção de equipe da Netlify estiver ligada, desligue
-   em Site configuration → Access & security, para os líderes conseguirem entrar.
 
 ## Organização
 

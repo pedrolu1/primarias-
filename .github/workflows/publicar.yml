@@ -1,13 +1,9 @@
 name: Publicar
 
-# Cada push na main monta o app e coloca no ar em https://reframax-primarias.netlify.app.
-# A Netlify troca a versão de uma vez só, quando o envio termina.
-# Secrets do repositório (Settings → Secrets and variables → Actions → Repository secrets):
-#   FIREBASE_CONFIG     o bloco firebaseConfig copiado do console do Firebase
-#                       (também vale como variável, na aba Variables, ou as seis
-#                       chaves separadas VITE_FIREBASE_*, como no Tempos & Métodos)
-#   NETLIFY_AUTH_TOKEN  token pessoal da Netlify
-#   VITE_APPCHECK_SITE_KEY (opcional) chave do reCAPTCHA v3 para o App Check
+# Cada push na main monta o app (e confere que ele compila). Se o secret
+# NETLIFY_AUTH_TOKEN existir, também publica em https://reframax-primarias.netlify.app;
+# sem ele, a publicação é feita pelo Claude, pelo conector da Netlify.
+# As chaves do Firebase ficam em src/lib/firebase-config.js (não são senha).
 
 on:
   push:
@@ -26,6 +22,8 @@ jobs:
   publicar:
     name: Publicar o Primárias
     runs-on: ubuntu-latest
+    env:
+      TEM_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN != '' && 'sim' || 'nao' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -34,33 +32,13 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Conferir os secrets
-        env:
-          FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG || vars.FIREBASE_CONFIG }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        run: |
-          falta=0
-          if [ -z "$FIREBASE_CONFIG" ] && [ -z "$VITE_FIREBASE_API_KEY" ]; then echo "::error::Falta o secret FIREBASE_CONFIG (bloco firebaseConfig do console do Firebase), em Settings > Secrets and variables > Actions > Repository secrets."; falta=1; fi
-          if [ -n "$FIREBASE_CONFIG" ] && ! echo "$FIREBASE_CONFIG" | grep -q "apiKey"; then echo "::error::O FIREBASE_CONFIG não tem o apiKey: cole o bloco firebaseConfig inteiro."; falta=1; fi
-          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then echo "::error::Falta o secret NETLIFY_AUTH_TOKEN (token pessoal da Netlify)."; falta=1; fi
-          exit $falta
-
       - run: npm ci
 
       - name: Build
         run: npm run build
-        env:
-          FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG || vars.FIREBASE_CONFIG }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_APPCHECK_SITE_KEY: ${{ secrets.VITE_APPCHECK_SITE_KEY }}
 
       - name: Publicar na Netlify
+        if: ${{ env.TEM_TOKEN == 'sim' }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: 497192f5-083b-4633-b1d0-af935b286636
