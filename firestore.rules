@@ -1,0 +1,159 @@
+rules_version = '2';
+
+// Regras do banco do app Primárias (projeto Firebase próprio).
+// Papéis em prim_usuarios: lider, planejador, admin e gestor (só leitura).
+// A primeira conta criada vira o "dono": administrador que ninguém rebaixa,
+// bloqueia ou apaga pelo app (só pelo console do Firebase).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() { return request.auth != null; }
+    function texto(v, max) { return v is string && v.size() <= max; }
+    function dataValida(v) { return v is string && v.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}'); }
+
+    function eu() {
+      return get(/databases/$(database)/documents/prim_usuarios/$(request.auth.uid)).data;
+    }
+    function aprovado() {
+      return logado()
+        && exists(/databases/$(database)/documents/prim_usuarios/$(request.auth.uid))
+        && eu().status == 'aprovado';
+    }
+    function admin() { return aprovado() && eu().papel == 'admin'; }
+    function gestao() { return aprovado() && eu().papel in ['admin', 'planejador']; }
+    // quem lança avanço e tira fotos (o gestor só olha)
+    function campo() { return aprovado() && eu().papel in ['lider', 'planejador', 'admin']; }
+    function leitura() { return aprovado(); }
+    function autor(d) { return d.autor.uid == request.auth.uid; }
+
+    function temDono() { return exists(/databases/$(database)/documents/prim_config/dono); }
+    function ehDono(uid) {
+      return temDono() && get(/databases/$(database)/documents/prim_config/dono).data.uid == uid;
+    }
+
+    // ---------------------------------------------------------------
+    // usuários: cada pessoa lê o próprio cadastro; o administrador vê a
+    // lista, libera, bloqueia e define o papel. O cadastro nasce líder
+    // pendente; só a primeira conta (sem dono ainda) nasce administradora,
+    // junto com o documento prim_config/dono, na mesma gravação.
+    // ---------------------------------------------------------------
+    match /prim_usuarios/{uid} {
+      allow get: if logado() && (request.auth.uid == uid || leitura());
+      allow list: if admin();
+      allow create: if logado() && request.auth.uid == uid
+        && texto(request.resource.data.nome, 120)
+        && request.resource.data.matricula is string
+        && request.resource.data.matricula.matches('[0-9]{6}')
+        && ((request.resource.data.papel == 'lider' && request.resource.data.status == 'pendente')
+          || (request.resource.data.papel == 'admin' && request.resource.data.status == 'aprovado'
+            && !temDono()
+            && getAfter(/databases/$(database)/documents/prim_config/dono).data.uid == request.auth.uid));
+      allow update: if (admin() && request.auth.uid != uid && !ehDono(uid)
+          && request.resource.data.papel in ['lider', 'planejador', 'admin', 'gestor']
+          && request.resource.data.status in ['pendente', 'aprovado', 'negado'])
+        || (logado() && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trocarSenha'])
+          && request.resource.data.trocarSenha == false);
+      allow delete: if admin() && request.auth.uid != uid && !ehDono(uid);
+    }
+
+    // ---------------------------------------------------------------
+    // lançamentos: o campo cria (sempre como ele mesmo); só o planejador ou
+    // o administrador altera (cancela ou troca o dia). Ninguém apaga.
+    // ---------------------------------------------------------------
+    function lancamentoValido(d) {
+      return d.etapa in ['andaime', 'demolicao', 'assentamento', 'injetbar', 'massa1200', 'desmontagem']
+        && dataValida(d.data)
+        && d.prims is list && d.prims.size() > 0 && d.prims.size() <= 900
+        && d.status in ['valido', 'cancelado']
+        && texto(d.get('obs', ''), 1000);
+    }
+    match /prim_lancamentos/{id} {
+      allow read: if leitura();
+      allow create: if campo() && autor(request.resource.data)
+        && request.resource.data.status == 'valido'
+        && lancamentoValido(request.resource.data);
+      allow update: if gestao()
+        && request.resource.data.autor.uid == resource.data.autor.uid
+        && lancamentoValido(request.resource.data);
+      allow delete: if false;
+    }
+
+    // pedidos de correção do campo; quem decide é o planejador ou o administrador
+    match /prim_correcoes/{id} {
+      allow read: if leitura();
+      allow create: if campo() && autor(request.resource.data)
+        && request.resource.data.status == 'pendente'
+        && texto(request.resource.data.motivo, 1000);
+      allow update: if gestao();
+      allow delete: if false;
+    }
+
+    // diário do campo (5S, ocorrências, material, segurança): vira as
+    // observações do RDO; o autor só consegue marcar como apagado
+    match /prim_ocorrencias/{id} {
+      allow read: if leitura();
+      allow create: if campo() && autor(request.resource.data)
+        && dataValida(request.resource.data.data)
+        && texto(request.resource.data.texto, 2000);
+      allow update: if gestao()
+        || (campo() && autor(resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
+      allow delete: if false;
+    }
+
+    // fotos do checklist: imagem comprimida dentro do documento (até ~1 MB);
+    // depois do checklist aprovado, ninguém do campo troca a foto
+    match /prim_fotos/{id} {
+      allow read: if leitura();
+      allow create, update: if campo()
+        && request.resource.data.fornoId is string
+        && request.resource.data.slot is string
+        && request.resource.data.imagem is string
+        && request.resource.data.imagem.size() < 1000000
+        && autor(request.resource.data)
+        && (resource == null
+          || !exists(/databases/$(database)/documents/prim_checklists/$(request.resource.data.fornoId))
+          || get(/databases/$(database)/documents/prim_checklists/$(request.resource.data.fornoId)).data.get('status', '') != 'aprovado');
+      allow delete: if gestao();
+    }
+
+    // checklist: o campo junta as fotos e envia; só o planejador ou o
+    // administrador aprova, e só ele numera
+    match /prim_checklists/{fornoId} {
+      allow read: if leitura();
+      allow write: if gestao()
+        || (campo()
+          && (resource == null || resource.data.get('status', '') != 'aprovado')
+          && request.resource.data.get('status', 'rascunho') in ['rascunho', 'enviado', 'devolvido']
+          && ((resource == null && request.resource.data.get('numero', null) == null)
+            || (resource != null && request.resource.data.get('numero', null) == resource.data.get('numero', null))));
+    }
+
+    // RDO e desvios: o planejador monta e fecha; o campo não mexe
+    match /prim_rdos/{data} {
+      allow read: if leitura();
+      allow write: if gestao();
+    }
+
+    match /prim_desvios/{data} {
+      allow read: if leitura();
+      allow write: if gestao();
+    }
+
+    // dono do app: gravado uma vez, junto com o cadastro da primeira conta
+    match /prim_config/dono {
+      allow get: if logado();
+      allow create: if logado()
+        && request.resource.data.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/prim_usuarios/$(request.auth.uid)).data.papel == 'admin';
+      allow update, delete: if false;
+    }
+
+    // configuração (meta, pesos, último RDO), base da planilha e contadores
+    match /prim_config/{id} {
+      allow read: if leitura();
+      allow write: if gestao() && id != 'dono';
+    }
+  }
+}

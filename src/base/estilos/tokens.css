@@ -1,0 +1,96 @@
+:root {
+  color-scheme: dark;
+
+  /* ---- superfícies ---- */
+  --bg-0: #0a0b0e;   /* base do app */
+  --bg-1: #121319;   /* painéis */
+  --bg-2: #191b22;   /* cards */
+  --bg-3: #22242e;   /* elevado / hover */
+  --bg-4: #2b2e39;   /* elevado forte / pressed */
+
+  /* ---- bordas ---- */
+  --border-soft: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  /* ---- texto ---- */
+  --text-0: #f4f2ee;
+  --text-1: #b7b6c0;
+  --text-2: #7b7c88;
+  --text-3: #4d4f5b;
+
+  /* ---- marca / acento ----
+     Azul: a cor associada a confiança, estabilidade e clareza mental —
+     a psicologia da cor mais estudada para ferramentas onde a pessoa
+     precisa se sentir segura ao registrar um dado técnico em campo.
+     Saturação alta o bastante para permanecer com energia em CTAs,
+     mas sem cair no azul "genérico de software" — puxa ligeiramente
+     para o índigo, ficando mais sofisticado e menos "feito de template". */
+  --accent-500: #2b5fea;
+  --accent-400: #4f80ff;
+  --accent-300: #93b4ff;
+  --on-accent: #ffffff;
+  --accent-glow: rgba(43, 95, 234, 0.35);
+  --accent-grad: linear-gradient(135deg, #2b5fea, #3573ef);
+
+  /* ---- semânticas (nunca seguem o azul da marca — são sinais universais
+     que a pessoa reconhece por hábito, independente da cor de marca) ---- */
+  /* verde claro x vermelho escuro: além da cor, a CLARIDADE é bem diferente —
+     assim produtivo e improdutivo se distinguem mesmo para quem tem
+     dificuldade de enxergar tons de vermelho/verde */
+  --ok-500: #4ade80;
+  --ok-glow: rgba(74, 222, 128, 0.26);
+  --warn-500: #ffcc4d;
+  --danger-500: #ef4444;
+  --danger-glow: rgba(239, 68, 68, 0.26);
+  /* desperdício necessário (DN) nos gráficos: âmbar com listras diagonais */
+  --dn-500: #f59e0b;
+  /* info: um ciano-esverdeado — deliberadamente distinto do azul de marca,
+     pra "isso é uma informação neutra" nunca ser confundido com "isso é
+     uma ação/destaque da marca" */
+  --info-500: #17b3a3;
+  --info-glow: rgba(23, 179, 163, 0.16);
+
+  /* ---- séries de gráfico (categórica, validada p/ contraste e daltonismo) ---- */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+  --chart-7: #9085e9;
+  --chart-8: #e66767;
+  --chart-surface: var(--bg-2);
+  --chart-grid: rgba(255, 255, 255, 0.08);
+  --chart-axis: rgba(255, 255, 255, 0.22);
+
+  /* ---- tipografia ---- */
+  --font-display: 'Space Grotesk', 'Manrope', system-ui, sans-serif;
+  --font-body: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* ---- forma ---- */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-full: 999px;
+
+  /* ---- movimento ---- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-med: 220ms;
+  --dur-slow: 420ms;
+
+  /* ---- elevação ---- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 24px 64px -16px rgba(0, 0, 0, 0.65);
+
+  /* ---- layout ---- */
+  --shell-sidebar-w: 244px;
+  --shell-topbar-h: 64px;
+  --mobile-nav-h: 78px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}

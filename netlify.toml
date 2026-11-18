@@ -1,0 +1,15 @@
+# Netlify: site reframax-primarias (https://reframax-primarias.netlify.app).
+# Quem publica é o GitHub Actions (.github/workflows/publicar.yml); este arquivo
+# vale também se a própria Netlify montar o site. Os cabeçalhos (cache e quem
+# pode abrir o app dentro de outra página) ficam em public/_headers.
+[build]
+  command = "npm run build"
+  publish = "dist"
+  environment = { NODE_VERSION = "22" }
+
+# Função do servidor /api/senha (senha provisória gerada pelo administrador).
+# O firebase-admin vai inteiro, sem empacotar, porque carrega arquivos em tempo de execução.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  external_node_modules = ["firebase-admin"]
