@@ -81,7 +81,9 @@ Para apontar para outro projeto Firebase sem mexer no código, copie
   modais, layout) que vieram do Tempos & Métodos.
 - `firestore.rules`: regras do banco (colar no console a cada mudança, ou
   `firebase deploy --only firestore:rules`).
-- `netlify/functions/senha.mjs`: senha provisória gerada pelo administrador.
+- `netlify/functions/usuarios.mjs` (`/api/usuarios`): senha provisória, exclusão
+  da conta de login, bloqueio do login e o "esqueci a senha" da tela de entrada.
+  Precisa da chave da conta de serviço em `FIREBASE_SERVICE_ACCOUNT` na Netlify.
 - `scripts/`: ícones (`npm run icones`) e a base histórica tirada da planilha.
 - `rotina/`: rotina diária no computador do planejador (WhatsApp → planilhas).
 

@@ -35,8 +35,38 @@ service cloud.firestore {
     // usuários: cada pessoa lê o próprio cadastro; o administrador vê a
     // lista, libera, bloqueia e define o papel. O cadastro nasce líder
     // pendente; só a primeira conta (sem dono ainda) nasce administradora,
-    // junto com o documento prim_config/dono, na mesma gravação.
+    // junto com o documento prim_config/dono, na mesma gravação. O dono
+    // ninguém altera nem apaga; outro administrador, só o dono.
     // ---------------------------------------------------------------
+    function papelValido(d) {
+      return d.papel in ['lider', 'planejador', 'admin', 'gestor']
+        && d.status in ['pendente', 'aprovado', 'negado'];
+    }
+    function viraDono() {
+      return !temDono()
+        && getAfter(/databases/$(database)/documents/prim_config/dono).data.uid == request.auth.uid;
+    }
+    // o administrador mexe nos outros (o dono, ninguém; outro administrador, só o dono)
+    function adminMexe(uid) {
+      return admin() && request.auth.uid != uid && !ehDono(uid)
+        && papelValido(request.resource.data)
+        && texto(request.resource.data.nome, 120)
+        && request.resource.data.matricula == resource.data.matricula
+        && ((resource.data.papel != 'admin' && request.resource.data.papel != 'admin') || ehDono(request.auth.uid));
+    }
+    // a própria pessoa: só o último acesso e o fim da senha provisória
+    function propriaPessoa(uid) {
+      return logado() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trocarSenha', 'ultimoAcessoEm'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['trocarSenha']) || request.resource.data.trocarSenha == false);
+    }
+    // a primeira conta que ficou pendente assume como dono, se ainda não há dono
+    function assumeDono(uid) {
+      return logado() && request.auth.uid == uid
+        && request.resource.data.papel == 'admin' && request.resource.data.status == 'aprovado'
+        && request.resource.data.matricula == resource.data.matricula
+        && viraDono();
+    }
     match /prim_usuarios/{uid} {
       allow get: if logado() && (request.auth.uid == uid || leitura());
       allow list: if admin();
@@ -45,16 +75,16 @@ service cloud.firestore {
         && request.resource.data.matricula is string
         && request.resource.data.matricula.matches('[0-9]{6}')
         && ((request.resource.data.papel == 'lider' && request.resource.data.status == 'pendente')
-          || (request.resource.data.papel == 'admin' && request.resource.data.status == 'aprovado'
-            && !temDono()
-            && getAfter(/databases/$(database)/documents/prim_config/dono).data.uid == request.auth.uid));
-      allow update: if (admin() && request.auth.uid != uid && !ehDono(uid)
-          && request.resource.data.papel in ['lider', 'planejador', 'admin', 'gestor']
-          && request.resource.data.status in ['pendente', 'aprovado', 'negado'])
-        || (logado() && request.auth.uid == uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trocarSenha'])
-          && request.resource.data.trocarSenha == false);
-      allow delete: if admin() && request.auth.uid != uid && !ehDono(uid);
+          || (request.resource.data.papel == 'admin' && request.resource.data.status == 'aprovado' && viraDono()));
+      allow update: if adminMexe(uid) || propriaPessoa(uid) || assumeDono(uid);
+      allow delete: if admin() && request.auth.uid != uid && !ehDono(uid)
+        && (resource.data.papel != 'admin' || ehDono(request.auth.uid));
+    }
+
+    // pedidos de "esqueci a senha": quem grava é o servidor (/api/usuarios)
+    match /prim_pedidos_senha/{uid} {
+      allow read, delete: if admin();
+      allow create, update: if false;
     }
 
     // ---------------------------------------------------------------

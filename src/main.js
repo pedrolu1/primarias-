@@ -4,7 +4,7 @@ import { CREDITO } from './base/ui.js';
 import { toast } from './base/toast.js';
 import {
   observarAcesso, entrar, cadastrar, solicitarAcesso, sair, criarSenhaPropria, mensagemDeErro, matriculaValida,
-  modoDemo, PERFIS_DEMO, entrarDemo
+  modoDemo, PERFIS_DEMO, entrarDemo, pedirNovaSenha, assumirComoDono
 } from './lib/acesso.js';
 import { PAPEIS, FORNOS, contratoAtivo } from './data/obra.js';
 import { calcular } from './lib/calculo.js';
@@ -34,7 +34,7 @@ function mostrar(a) {
   if (a.estado === 'carregando') return trocarTela(() => mount(app, [el('div', { class: 'boot-splash' }, [el('div', { class: 'boot-mark' }, el('div', { class: 'marca marca-lg' }, 'Primárias')), el('div', { class: 'marca-tag' }, 'Carregando…')])]));
   if (a.estado === 'sem-login') return trocarTela(() => (modoDemo ? entradaDemo() : login()));
   if (a.estado === 'sem-acesso') return trocarTela(() => pedirAcesso(a.sugestao || {}));
-  if (a.estado === 'pendente') return trocarTela(() => aviso('Acesso em análise', `Olá, ${a.perfil.nome}. Seu pedido chegou ao administrador. Assim que ele liberar, esta tela abre o app sozinha.`));
+  if (a.estado === 'pendente') return trocarTela(() => (a.semDono ? primeiraConta(a.perfil) : aviso('Acesso em análise', `Olá, ${a.perfil.nome}. Seu pedido chegou ao administrador. Assim que ele liberar, esta tela abre o app sozinha.`)));
   if (a.estado === 'negado') return trocarTela(() => aviso('Acesso não liberado', 'O administrador não liberou seu acesso ao Primárias. Fale com o planejamento.'));
   if (a.estado === 'trocar-senha') return trocarTela(() => novaSenha(a.perfil));
   if (a.estado === 'ok') return abrirApp(a.perfil);
@@ -104,6 +104,7 @@ function login() {
         el('div', { class: 'acesso-troca' }, cadastro
           ? ['Já tem conta? ', el('button', { type: 'button', onclick: () => { telaLogin = 'entrar'; login(); } }, 'Entrar')]
           : ['Primeiro acesso? ', el('button', { type: 'button', onclick: () => { telaLogin = 'cadastro'; login(); } }, 'Criar conta')]),
+        cadastro ? null : el('div', { class: 'acesso-troca' }, el('button', { type: 'button', onclick: () => esqueciSenha(matricula.value) }, 'Esqueci minha senha')),
         el('div', { class: 'credito' }, CREDITO)
       ])
     ])
@@ -129,6 +130,55 @@ function pedirAcesso(sugestao) {
       el('h3', {}, 'Falta liberar o Primárias'),
       el('p', {}, `Sua conta (matrícula ${sugestao.matricula || ''}) já existe, mas ainda não tem acesso a este app. Peça abaixo: o administrador libera e define o seu papel.`),
       el('div', { class: 'field', style: { width: '100%' } }, [el('label', { class: 'field-label' }, 'Seu nome'), nome]),
+      botao,
+      el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => sair() }, 'Sair')
+    ])
+  ])])]);
+}
+
+/** "Esqueci a senha": o pedido vai para o administrador, que gera uma provisória. */
+function esqueciSenha(matriculaDigitada = '') {
+  const campo = el('input', { class: 'input', inputmode: 'numeric', maxlength: 6, placeholder: '6 números', value: matriculaValida(matriculaDigitada) ? matriculaDigitada : '' });
+  const botao = el('button', { class: 'btn btn-primary', type: 'button', style: { flex: 1 }, onclick: async () => {
+    if (!matriculaValida(campo.value)) return toast('A matrícula tem 6 números.', 'error');
+    botao.disabled = true;
+    try {
+      await pedirNovaSenha(campo.value);
+      folha.montar({
+        corpo: [el('p', {}, 'Pedido enviado. O administrador vai gerar uma senha provisória e passar para você (pelo WhatsApp ou pessoalmente). Com ela, você entra e cria a sua senha.')],
+        pe: [el('button', { class: 'btn btn-primary', type: 'button', style: { flex: 1 }, onclick: () => folha.fechar() }, 'Entendi')]
+      });
+    } catch (err) {
+      botao.disabled = false;
+      toast(err?.code === 'nao-configurado' ? 'O pedido pelo app ainda não está ligado. Fale com o planejamento para receber uma senha nova.' : mensagemDeErro(err), 'error', 7000);
+    }
+  } }, 'Pedir senha nova');
+  const folha = abrirFolha({
+    titulo: 'Esqueci minha senha',
+    subtitulo: 'O administrador recebe o pedido no app',
+    corpo: [el('div', { class: 'field' }, [el('label', { class: 'field-label' }, 'Sua matrícula'), campo])],
+    pe: [botao]
+  });
+  setTimeout(() => campo.focus(), 60);
+}
+
+/** A primeira conta ficou pendente e o app ainda não tem dono: ela assume. */
+function primeiraConta(perfil) {
+  const botao = el('button', { class: 'btn btn-primary btn-block', type: 'button', onclick: async () => {
+    botao.disabled = true;
+    try {
+      await assumirComoDono(perfil);
+      toast('Pronto: você é o dono do app.', 'ok');
+    } catch {
+      botao.disabled = false;
+      toast('Não deu: o app já tem dono ou a internet caiu. Saia e entre de novo.', 'error', 7000);
+    }
+  } }, 'Assumir como dono do app');
+  mount(app, [el('div', { class: 'acesso' }, [el('div', { class: 'acesso-caixa' }, [
+    cabecalho(),
+    el('div', { class: 'acesso-cartao' }, [
+      el('h3', {}, 'O app ainda não tem dono'),
+      el('p', {}, `${perfil.nome}, sua conta é a primeira e ficou aguardando liberação. Assuma como dono: você vira o administrador que ninguém rebaixa, bloqueia ou apaga, e libera as outras pessoas.`),
       botao,
       el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => sair() }, 'Sair')
     ])

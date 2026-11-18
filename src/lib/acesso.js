@@ -26,7 +26,7 @@ function comPrazo(promessa, ms = 20000) {
 export function mensagemDeErro(err) {
   const mapa = {
     'auth/invalid-email': 'Matrícula inválida: são 6 números.',
-    'auth/user-disabled': 'Esta conta foi desativada.',
+    'auth/user-disabled': 'Seu acesso foi bloqueado pelo administrador. Fale com o planejamento.',
     'auth/user-not-found': 'Matrícula ou senha incorretos.',
     'auth/wrong-password': 'Matrícula ou senha incorretos.',
     'auth/invalid-credential': 'Matrícula ou senha incorretos.',
@@ -59,14 +59,36 @@ export function observarAcesso(cb) {
     if (!user) return cb({ estado: 'sem-login' });
     cb({ estado: 'carregando' });
     const matricula = (user.email || '').split('@')[0];
-    pararDoc = onSnapshot(doc(db, COL, user.uid), (snap) => {
+    // dono do app: undefined enquanto não leu, null se ainda não há dono
+    let dono;
+    let donoLido = false;
+    const lerDono = () => getDoc(doc(db, 'prim_config', 'dono'))
+      .then((d) => { dono = d.exists() ? d.data().uid : null; }, () => { dono = undefined; })
+      .finally(() => { donoLido = true; });
+    let marcouAcesso = false;
+    let ultimo = null;
+    const emitir = (snap) => {
       if (!snap.exists()) return cb({ estado: 'sem-acesso', sugestao: { nome: user.displayName || '', matricula } });
       const d = snap.data();
-      const perfil = { uid: user.uid, nome: d.nome, matricula: d.matricula, papel: d.papel };
+      const perfil = { uid: user.uid, nome: d.nome, matricula: d.matricula, papel: d.papel, dono: dono === user.uid };
       if (d.status === 'negado') return cb({ estado: 'negado', perfil });
-      if (d.status !== 'aprovado') return cb({ estado: 'pendente', perfil });
+      if (d.status !== 'aprovado') return cb({ estado: 'pendente', perfil, semDono: dono === null });
       if (d.trocarSenha) return cb({ estado: 'trocar-senha', perfil });
+      // último acesso, no máximo uma vez a cada meia hora
+      const visto = d.ultimoAcessoEm?.toMillis?.() || 0;
+      if (!marcouAcesso && Date.now() - visto > 30 * 60 * 1000) {
+        marcouAcesso = true;
+        updateDoc(snap.ref, { ultimoAcessoEm: serverTimestamp() }).catch(() => {});
+      }
       cb({ estado: 'ok', perfil });
+    };
+    lerDono().then(() => ultimo && emitir(ultimo));
+    pararDoc = onSnapshot(doc(db, COL, user.uid), (snap) => {
+      ultimo = snap;
+      if (!donoLido) return; // emite quando terminar de ler o dono
+      // pendente: confere o dono de novo (alguém pode ter virado dono)
+      if (snap.exists() && snap.data().status === 'pendente') lerDono().then(() => emitir(snap));
+      else emitir(snap);
     }, () => cb({ estado: 'sem-acesso', sugestao: { nome: user.displayName || '', matricula } }));
   });
   return () => {
@@ -81,6 +103,26 @@ export function entrar(matricula, senha) {
   return comPrazo(signInWithEmailAndPassword(auth, emailDa(matricula), senha));
 }
 
+/** Se o app já tem dono. Sem conseguir ler, responde que tem (a pessoa pode assumir depois). */
+async function haDono() {
+  for (let i = 0; i < 3; i++) {
+    try {
+      return (await getDoc(doc(db, 'prim_config', 'dono'))).exists();
+    } catch {
+      await new Promise((ok) => setTimeout(ok, 700));
+    }
+  }
+  return true;
+}
+
+/** Vira o dono: cadastro de administrador e prim_config/dono na mesma gravação. */
+function virarDono(uid, dados, { manter = false } = {}) {
+  const lote = writeBatch(db);
+  lote.set(doc(db, COL, uid), manter ? { papel: 'admin', status: 'aprovado' } : { ...dados, papel: 'admin', status: 'aprovado' }, { merge: manter });
+  lote.set(doc(db, 'prim_config', 'dono'), { uid, nome: dados.nome, matricula: dados.matricula, em: serverTimestamp() });
+  return lote.commit();
+}
+
 /**
  * Cadastro no Primárias de quem já está logado. Se o app ainda não tem dono,
  * esta conta vira o dono (administrador); senão nasce líder pendente.
@@ -88,24 +130,21 @@ export function entrar(matricula, senha) {
 async function registrar({ nome, matricula }) {
   const uid = auth.currentUser.uid;
   const dados = { nome: nome.trim(), matricula: String(matricula).trim(), criadoEm: serverTimestamp() };
-  let semDono = false;
-  try {
-    semDono = !(await getDoc(doc(db, 'prim_config', 'dono'))).exists();
-  } catch {
-    semDono = false;
-  }
-  if (semDono) {
+  if (!(await haDono())) {
     try {
-      const lote = writeBatch(db);
-      lote.set(doc(db, COL, uid), { ...dados, papel: 'admin', status: 'aprovado' });
-      lote.set(doc(db, 'prim_config', 'dono'), { uid, nome: dados.nome, matricula: dados.matricula, em: serverTimestamp() });
-      await lote.commit();
+      await virarDono(uid, dados);
       return;
     } catch {
       /* alguém virou dono antes: segue como cadastro comum */
     }
   }
   await setDoc(doc(db, COL, uid), { ...dados, papel: 'lider', status: 'pendente' });
+}
+
+/** A primeira conta que ficou pendente (sem dono no app) assume como dono. */
+export function assumirComoDono(perfil) {
+  if (modoDemo) return Promise.resolve();
+  return virarDono(auth.currentUser.uid, { nome: perfil.nome, matricula: perfil.matricula }, { manter: true });
 }
 
 /** Conta nova: nasce como líder pendente (ou dono, se for a primeira do app). */
@@ -160,27 +199,89 @@ export function assinarUsuarios(cb) {
     avisar();
   }, () => cb([]));
 }
-export function atualizarUsuario(uid, mudancas) {
-  if (modoDemo) return atualizarUsuarioDemo(uid, mudancas);
-  return updateDoc(doc(db, COL, uid), mudancas);
+
+/** Pedidos de "esqueci a senha" que chegaram pela tela de entrada. */
+export function assinarPedidosSenha(cb) {
+  if (modoDemo) return assinarPedidosDemo(cb);
+  return onSnapshot(collection(db, 'prim_pedidos_senha'), (snap) => cb(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))), () => cb([]));
 }
-export function removerAcesso(uid) {
-  if (modoDemo) return atualizarUsuarioDemo(uid, null);
-  return deleteDoc(doc(db, COL, uid));
+export function descartarPedidoSenha(uid) {
+  if (modoDemo) return mudarPedidosDemo((l) => l.filter((p) => p.uid !== uid));
+  return deleteDoc(doc(db, 'prim_pedidos_senha', uid));
 }
 
-/** Redefine a senha de alguém pela função /api/senha (precisa da chave do Firebase na Netlify). */
+/** Papel, status e nome. Bloquear também desliga o login (se o servidor estiver ligado). */
+export async function atualizarUsuario(uid, mudancas) {
+  if (modoDemo) return atualizarUsuarioDemo(uid, mudancas);
+  await updateDoc(doc(db, COL, uid), { ...mudancas, alteradoEm: serverTimestamp(), alteradoPor: auth.currentUser.uid });
+  if (mudancas.status === 'negado' || mudancas.status === 'aprovado') chamarServidor('acesso', { uid, ativo: mudancas.status === 'aprovado' }).catch(() => {});
+}
+
+/** Exclui a pessoa: com o servidor ligado, a conta de login vai junto. */
+export async function excluirUsuario(uid) {
+  if (modoDemo) {
+    await atualizarUsuarioDemo(uid, null);
+    return { completo: true };
+  }
+  if ((await statusServidor()).configurado) {
+    await chamarServidor('excluir', { uid });
+    return { completo: true };
+  }
+  await deleteDoc(doc(db, COL, uid));
+  return { completo: false };
+}
+
+/** Senha provisória (a pessoa cria a dela no próximo acesso). */
 export async function redefinirSenha(uid) {
+  if (modoDemo) {
+    await mudarPedidosDemo((l) => l.filter((p) => p.uid !== uid));
+    return 'demo2026';
+  }
+  return (await chamarServidor('senha', { uid })).senha || '';
+}
+
+let servidor = null;
+/** Se a função /api/usuarios tem a chave do Firebase. */
+export function statusServidor() {
+  if (modoDemo) return Promise.resolve({ configurado: true });
+  servidor ||= fetch('/api/usuarios', { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : { configurado: false }))
+    .catch(() => {
+      servidor = null;
+      return { configurado: false, semRede: true };
+    });
+  return servidor;
+}
+
+async function chamarServidor(acao, dados) {
   const token = await auth.currentUser.getIdToken();
   let r;
   try {
-    r = await fetch('/api/senha', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ uid, exigirTroca: true }) });
+    r = await fetch('/api/usuarios', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ acao, ...dados }) });
   } catch {
     throw Object.assign(new Error('rede'), { code: 'rede' });
   }
   const corpo = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(corpo.erro || 'falhou'), { code: corpo.erro || (r.status === 404 ? 'nao-configurado' : 'falhou') });
-  return corpo.senha || '';
+  return corpo;
+}
+
+/** "Esqueci a senha", na tela de entrada (sem login): vira um pedido para o administrador. */
+export async function pedirNovaSenha(matricula) {
+  if (!matriculaValida(matricula)) throw Object.assign(new Error('matricula'), { code: 'auth/invalid-email' });
+  if (modoDemo) {
+    const u = usuariosDemo().find((x) => x.matricula === String(matricula).trim());
+    if (u) await mudarPedidosDemo((l) => [...l.filter((p) => p.uid !== u.uid), { uid: u.uid, nome: u.nome, matricula: u.matricula, em: Date.now() }]);
+    return;
+  }
+  let r;
+  try {
+    r = await fetch('/api/usuarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: 'pedido-senha', matricula: String(matricula).trim() }) });
+  } catch {
+    throw Object.assign(new Error('rede'), { code: 'auth/network-request-failed' });
+  }
+  if (r.status === 503 || r.status === 404) throw Object.assign(new Error('nao-configurado'), { code: 'nao-configurado' });
+  if (!r.ok) throw Object.assign(new Error('falhou'), { code: 'falhou' });
 }
 
 // ---------------------------------------------------------------------------
@@ -207,7 +308,7 @@ function lerDemo() {
 }
 function observarDemo(cb) {
   perfilDemo = lerDemo();
-  const avisar = () => cb(perfilDemo ? { estado: 'ok', perfil: perfilDemo } : { estado: 'sem-login', demo: true });
+  const avisar = () => cb(perfilDemo ? { estado: 'ok', perfil: { ...perfilDemo, dono: perfilDemo.uid === 'demo-admin' } } : { estado: 'sem-login', demo: true });
   ouvintesDemo.add(avisar);
   avisar();
   return () => ouvintesDemo.delete(avisar);
@@ -239,7 +340,12 @@ function usuariosDemo() {
   } catch {
     extras = {};
   }
-  const base = [...PERFIS_DEMO.map((p) => ({ ...p, status: 'aprovado', dono: p.uid === 'demo-admin' })), { uid: 'demo-novo', nome: 'Líder Novo', matricula: '100006', papel: 'lider', status: 'pendente' }];
+  const agora = Date.now();
+  const base = [
+    ...PERFIS_DEMO.map((p, i) => ({ ...p, status: 'aprovado', dono: p.uid === 'demo-admin', ultimoAcessoEm: agora - i * 5.5 * 3600 * 1000 })),
+    { uid: 'demo-novo', nome: 'Líder Novo', matricula: '100006', papel: 'lider', status: 'pendente' },
+    { uid: 'demo-bloq', nome: 'Líder Antigo', matricula: '100007', papel: 'lider', status: 'negado', ultimoAcessoEm: agora - 20 * 86400 * 1000 }
+  ];
   return base.map((u) => (extras[u.uid] === null ? null : { ...u, ...(extras[u.uid] || {}) })).filter(Boolean);
 }
 const ouvintesUsuarios = new Set();
@@ -263,6 +369,33 @@ function atualizarUsuarioDemo(uid, mudancas) {
   }
   const lista = usuariosDemo();
   ouvintesUsuarios.forEach((f) => f(lista));
+  return Promise.resolve();
+}
+
+const CHAVE_PEDIDOS = 'prim.demo.pedidos-senha';
+const ouvintesPedidos = new Set();
+function pedidosDemo() {
+  try {
+    const salvo = localStorage.getItem(CHAVE_PEDIDOS);
+    if (salvo) return JSON.parse(salvo);
+  } catch {
+    /* sem armazenamento */
+  }
+  return [{ uid: 'demo-lider-2', nome: 'Líder 2', matricula: '100002', em: Date.now() - 40 * 60 * 1000 }];
+}
+function assinarPedidosDemo(cb) {
+  ouvintesPedidos.add(cb);
+  cb(pedidosDemo());
+  return () => ouvintesPedidos.delete(cb);
+}
+function mudarPedidosDemo(fn) {
+  const lista = fn(pedidosDemo());
+  try {
+    localStorage.setItem(CHAVE_PEDIDOS, JSON.stringify(lista));
+  } catch {
+    /* sem armazenamento */
+  }
+  ouvintesPedidos.forEach((f) => f(lista));
   return Promise.resolve();
 }
 
