@@ -11,6 +11,7 @@ import { EFETIVO_MODELO, TIPOS_OCORRENCIA, FERIADOS } from '../../data/obra.js';
 import { rdoDoDia, observacoesSugeridas, rdoUltimo } from '../../lib/calculo.js';
 import { salvarRdo } from '../../lib/banco.js';
 import { modeloGuardado, estaOcupado, gerarExcel, usarRedesenho, escolherArquivo } from '../../lib/excel.js';
+import { arquivoNaPasta } from '../../lib/pasta.js';
 import { hoje, somarDias, completa, nomeDia, semana } from '../../lib/datas.js';
 import { toast } from '../../base/toast.js';
 
@@ -43,7 +44,8 @@ export function paginaRdo(ctx) {
     salvarRdo(dia, { status: 'fechado', numero: r.numero, obs: obsTexto, materiais, fechadoPor: perfil.nome, fechadoEm: Date.now() });
     toast(`RDO nº ${r.numero} fechado. O campo não registra mais neste dia.`, 'ok');
   };
-  const modelo = modeloGuardado('rdo');
+  const naPasta = arquivoNaPasta('rdo');
+  const modelo = naPasta || modeloGuardado('rdo');
   const gravando = estaOcupado('excel-rdo');
   const acoes = [];
   if (!leitura && r.status === 'rascunho' && r.numero) acoes.push(el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: fechar }, [el('span', { html: ic.lock(15) }), 'Fechar RDO']));
@@ -54,9 +56,9 @@ export function paginaRdo(ctx) {
   if (r.numero && r.status !== 'planilha') {
     acoes.push(el('button', {
       class: 'btn btn-outline btn-sm', type: 'button', disabled: gravando,
-      title: modelo ? `Grava a aba ${r.numero} em ${modelo.nome}` : 'Escolha a planilha do RDO uma vez',
+      title: modelo ? `Grava a aba ${r.numero} em ${modelo.nome}${naPasta ? ' (pasta primarias)' : ''}` : 'Escolha a planilha do RDO uma vez',
       onclick: () => gerarExcel('rdo', calc, { datas: [dia] })
-    }, [el('span', { html: gravando ? '' : ic.planilha(15), class: gravando ? 'spinner' : '', style: { display: 'inline-flex' } }), gravando ? 'Gravando…' : 'Gravar no Excel']));
+    }, [el('span', { html: gravando ? '' : ic.planilha(15), class: gravando ? 'spinner' : '', style: { display: 'inline-flex' } }), gravando ? 'Gravando…' : naPasta ? 'Gravar na pasta' : 'Gravar no Excel']));
   }
   acoes.push(el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => window.print() }, [el('span', { html: ic.imprimir(15) }), 'Imprimir ou PDF']));
 
@@ -79,7 +81,7 @@ export function paginaRdo(ctx) {
     registrosDoCampo(r),
     leitura ? null : edicao(r, s, obsTexto, sugerido, perfil),
     leitura || modelo ? null : el('section', { class: 'cartao nao-imprimir' }, [
-      el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Planilha do RDO'), el('p', {}, 'Escolha a PLAN-RFX-002 uma vez. O app grava cada RDO fechado numa aba nova, depois da última, com o mesmo layout.')])]),
+      el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Planilha do RDO'), el('p', {}, 'Conecte a pasta primarias em Documentos (o app acha a PLAN-RFX-002 sozinho) ou escolha o arquivo aqui. Cada RDO fechado vira uma aba nova, depois da última, com o mesmo layout.')])]),
       el('div', { class: 'toolbar' }, [el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: () => escolherArquivo('rdo') }, [el('span', { html: ic.planilha(15) }), 'Escolher a planilha'])])
     ]),
     controle(calc, ir)

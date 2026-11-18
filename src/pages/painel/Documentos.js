@@ -12,6 +12,8 @@ import { NOME_STATUS } from '../../components/checklistFotos.js';
 import { ic } from '../../lib/icones.js';
 import { ETAPAS_MAPA, CLIENTE, SERVICO, contratoAtivo, localMedicao, rotulo } from '../../data/obra.js';
 import { curvaBm, curvaContrato, bmsDoContrato, bmAtual, contagemPorEtapa, relacaoDoBm } from '../../lib/calculo.js';
+import { cartaoPasta } from '../../components/pastaCartao.js';
+import { arquivoNaPasta } from '../../lib/pasta.js';
 import { MODELOS, modeloGuardado, estaOcupado, ocupar, escolherArquivo, gerarExcel, usarRedesenho } from '../../lib/excel.js';
 import { baixar, pdfChecklists } from '../../lib/documentos.js';
 import { hoje, completa, curta, nomeBm, rotuloBm, referenciaBm, periodoBm } from '../../lib/datas.js';
@@ -44,8 +46,21 @@ export function paginaDocumentos(ctx) {
 
   const excel = (tipo, extra = null, opcoes = {}) => {
     const m = MODELOS[tipo];
+    const naPasta = arquivoNaPasta(tipo);
     const modelo = modeloGuardado(tipo);
     const gerando = estaOcupado(`excel-${tipo}`);
+    if (naPasta) {
+      return el('div', { class: 'doc-excel' }, [
+        el('div', { class: 'doc-excel-info' }, [
+          el('span', { class: 'doc-excel-icone', html: ic.pasta(20) }),
+          el('div', {}, [el('strong', {}, `Planilha ${m.nome}`), el('small', {}, `Na pasta: ${naPasta.caminho}${naPasta.aberto ? ' · aberta no Excel' : ''}`)])
+        ]),
+        extra,
+        el('div', { class: 'toolbar' }, [
+          el('button', { class: 'btn btn-primary btn-sm', type: 'button', disabled: gerando, onclick: () => gerarExcel(tipo, calc, opcoes) }, [el('span', { html: gerando ? '' : ic.download(15), class: gerando ? 'spinner' : '', style: { display: 'inline-flex' } }), gerando ? 'Gravando…' : 'Gravar na pasta agora'])
+        ])
+      ]);
+    }
     return el('div', { class: 'doc-excel' }, [
       el('div', { class: 'doc-excel-info' }, [
         el('span', { class: 'doc-excel-icone', html: ic.planilha(20) }),
@@ -75,6 +90,7 @@ export function paginaDocumentos(ctx) {
   const comFotos = rel.filter((r) => r.checklist && r.checklist.origem !== 'planilha');
 
   return [
+    ctx.leitura ? null : cartaoPasta(),
     seletor,
     el('div', { class: 'painel-grade doc-grade' }, [
       cartao(ic.mapa(22), 'Mapa visual', `Bateria ${contratoAtivo().bateria} com andaime, demolição, assentamento e revestimento de cada primária.`, [

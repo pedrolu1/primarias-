@@ -2,8 +2,8 @@
 // só as células de dados mudam; fórmulas, formatação, gráficos, tabelas
 // dinâmicas e macros ficam como estavam. Ao abrir, o Excel recalcula tudo e
 // atualiza as tabelas dinâmicas.
-//   - Gestão Visual: datas de demolição, instalação e revestimento, andaime,
-//     medição de cada primária e o "atualizado em" do mapa.
+//   - Gestão Visual: datas de demolição, instalação e revestimento, andaime
+//     de cada primária e o "atualizado em" do mapa (a medição fica com a equipe).
 //   - Curva S: realizado de cada semana (e, se pedir, a meta do app no previsto).
 //   - Resumo da medição (espelho): uma aba nova para o BM, com a relação dos
 //     fornos, o número do checklist e o status.
@@ -12,7 +12,7 @@
 import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
 import { PRIMARIAS, FORNOS, primariaPorId, contratoAtivo, localMedicao, MATERIAIS, EFETIVO_MODELO } from '../data/obra.js';
 import { INDICE_ETAPA as IDX, relacaoDoBm, rdoDoDia, observacoesSugeridas } from './calculo.js';
-import { iso, hoje, inicioDaSemana, somarDias, periodoBm, referenciaBm, completa, bmDaSemana } from './datas.js';
+import { iso, hoje, inicioDaSemana, somarDias, periodoBm, referenciaBm, completa } from './datas.js';
 
 // ---------------------------------------------------------------------------
 // Pacote .xlsx
@@ -275,7 +275,7 @@ const carimbo = (agora) => `${doisDigitos(agora.getDate())}/${doisDigitos(agora.
 // Gestão Visual: aba "Banco de Dados" (linha 32 em diante)
 // C item · E bloco · F lado · G forno · H primária · K andaime (SIM/NÃO)
 // L/M demolição início/fim · O/P instalação início/fim · R/S revestimento
-// início/fim · W medição (revestimento)
+// início/fim. A coluna W (medição) não é tocada.
 // ---------------------------------------------------------------------------
 export function atualizarGestaoVisual(bytes, calc, { agora = new Date(), baterias = [contratoAtivo().bateria] } = {}) {
   const pacote = abrirPacote(bytes);
@@ -322,10 +322,7 @@ export function atualizarGestaoVisual(bytes, calc, { agora = new Date(), bateria
     // andaime: só o que foi lançado no app (a planilha sabe o resto)
     if (q[IDX.desmontagem]) ajustar(`K${r}`, 'NÃO');
     else if (q[IDX.andaime] && !f[IDX.desmontagem]) ajustar(`K${r}`, 'SIM');
-    // medição: o BM em que o forno fechou ("2026_11" = 16/10 a 15/11, como nas
-    // baterias A e C), só se a célula estiver vazia
-    const fechou = calc.fornos[p.fornoId]?.concluidoEm;
-    if (fechou && !aba.valor(`W${r}`)) ajustar(`W${r}`, bmDaSemana(fechou));
+    // a medição (coluna W) fica com a equipe: só entra quando o forno é medido
     if (resumo.celulas > antes) resumo.primarias++;
   }
   resumo.semLinha = PRIMARIAS.filter((p) => baterias.includes(p.bateria) && !vistas.has(p.id)).map((p) => p.id);

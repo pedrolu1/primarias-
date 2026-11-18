@@ -478,7 +478,7 @@ export function rdoDoDia(calc, data) {
   });
   const ocorrencias = (calc.estado.ocorrencias || []).filter((o) => o.data === data && o.status !== 'cancelado').sort((a, b) => (a.criadoEmLocal || 0) - (b.criadoEmLocal || 0));
   // até o último RDO da planilha, o relatório já foi emitido fora do app
-  const status = salvo?.status || (data <= ultimo.data ? 'planilha' : 'rascunho');
+  const status = salvo?.status && salvo.status !== 'rascunho' ? salvo.status : data <= ultimo.data ? 'planilha' : 'rascunho';
   return { data, numero: numeroRdo(calc, data), atividades, sopragem, colunas, materiais, ocorrencias, salvo, status, expediente: temExpediente(calc, data) };
 }
 

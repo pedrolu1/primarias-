@@ -6,6 +6,7 @@ import { toast } from '../base/toast.js';
 import { lerModelo, guardarModelo } from './modelos.js';
 import { baixar, nomeAtualizado, TIPO_XLSX, TIPO_XLSM } from './documentos.js';
 import { completa } from './datas.js';
+import { arquivoNaPasta, gravarNaPasta } from './pasta.js';
 
 export const MODELOS = {
   gestao: { chave: 'gestao-visual', nome: 'Gestão Visual', aceita: '.xlsx,.xlsm' },
@@ -80,6 +81,20 @@ const plural = (n, s, p = `${s}s`) => `${n} ${n === 1 ? s : p}`;
  * medição, { datas } para o RDO (além dos RDOs fechados que faltam nela).
  */
 export async function gerarExcel(tipo, calc, opcoes = {}) {
+  // com a pasta primarias conectada, grava direto no arquivo de lá
+  if (arquivoNaPasta(tipo)) {
+    await ocupar(`excel-${tipo}`, async () => {
+      try {
+        const r = await gravarNaPasta(tipo, calc, opcoes);
+        if (r?.conflitos?.length) toast(`Não gravei: ${r.conflitos.join('; ')}.`, 'error', 9000);
+        if (r?.bytes) toast(`Gravado na pasta: ${r.arquivo} (${r.texto}).`, 'ok', 6000);
+        else if (!r?.conflitos?.length) toast(tipo === 'rdo' ? 'Nenhum RDO novo para gravar: feche o RDO do dia antes.' : 'Nada novo para gravar.', 'info', 6000);
+      } catch (err) {
+        toast(err.message, 'error', 9000);
+      }
+    });
+    return;
+  }
   const modelo = modeloGuardado(tipo);
   if (!modelo) return escolherArquivo(tipo, () => gerarExcel(tipo, calc, opcoes));
   await ocupar(`excel-${tipo}`, async () => {

@@ -54,3 +54,20 @@ export async function apagarModelo(chave) {
     /* nada a apagar */
   }
 }
+
+/** Qualquer valor guardado neste aparelho (ex.: a pasta escolhida). */
+export async function lerValor(chave) {
+  try {
+    return (await operar('readonly', (loja) => loja.get(chave))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function guardarValor(chave, valor) {
+  try {
+    await operar('readwrite', (loja) => loja.put(valor, chave));
+  } catch {
+    /* sem IndexedDB: vale até fechar a página */
+  }
+}

@@ -34,6 +34,7 @@ export const ic = {
   semNuvem: (sz) => s('<path d="M7 18a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19.5 11 3.5 3.5 0 0 1 18 18z"/><path d="M3 3l18 18"/>', sz),
   documento: (sz) => s('<path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 16.5h7"/>', sz),
   planilha: (sz) => s('<path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M8 12.5h8M8 16h8M11 12.5v6.5"/>', sz),
+  pasta: (sz) => s('<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/>', sz),
   usuarios: (sz) => s('<path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20"/><circle cx="9.5" cy="7.5" r="3.5"/><path d="M17.5 20v-1.5a3.5 3.5 0 0 0-2.3-3.29"/><path d="M14.3 4.2a3.5 3.5 0 0 1 0 6.6"/>', sz)
 };
 

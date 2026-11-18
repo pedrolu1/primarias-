@@ -8,6 +8,8 @@ import { assinarUsuarios } from '../../lib/acesso.js';
 import { calcular, checklists } from '../../lib/calculo.js';
 import { PAPEIS } from '../../data/obra.js';
 import { chipSinc } from '../../components/sinc.js';
+import { chipPasta } from '../../components/pastaCartao.js';
+import { iniciarPasta, aoMudarPasta } from '../../lib/pasta.js';
 import { paginaVisao } from './Visao.js';
 import { paginaMapa } from './Mapa.js';
 import { paginaCurva } from './Curva.js';
@@ -56,6 +58,7 @@ export function montarPainel(root, { perfil, menuDemo, trocarVisao }) {
     usuarios: el('span', { class: 'badge badge-warn', style: { display: 'none' } }, '0')
   };
   const sinc = chipSinc();
+  const pasta = chipPasta((r) => (location.hash = `/${r}`));
   const nav = el('nav', { class: 'sidebar-nav', 'aria-label': 'Páginas do painel' }, NAV.map((n) => {
     const b = el('button', { class: 'sidebar-link', type: 'button', title: n.nome, onclick: () => (location.hash = `/${n.id}`) }, [el('span', { class: 'sidebar-icon', html: n.icone }), el('span', { class: 'sidebar-label' }, n.nome), badges[n.id] || null]);
     links[n.id] = b;
@@ -86,6 +89,7 @@ export function montarPainel(root, { perfil, menuDemo, trocarVisao }) {
         el('div', {}, [titulo, subtitulo]),
         el('div', { class: 'topo-acoes' }, [
           leitura ? el('span', { class: 'somente-leitura' }, [el('span', { html: ic.olho(14), style: { display: 'inline-flex' } }), 'Só leitura']) : null,
+          pasta.no,
           sinc.no,
           el('span', { class: 'ao-vivo' }, 'ao vivo'),
           menuDemo ? el('button', { class: 'demo-pilula', type: 'button', onclick: menuDemo }, [el('span', { class: 'vivo' }), 'Demonstração']) : null
@@ -125,6 +129,13 @@ export function montarPainel(root, { perfil, menuDemo, trocarVisao }) {
     else if (calc) pendente = true;
   }) : null;
 
+  // pasta primarias: só o planejador e o administrador leem e gravam as planilhas
+  const pararPasta = papel.gestao && !leitura ? aoMudarPasta(() => {
+    pasta.atualizar();
+    if (calc && ['documentos', 'rdo'].includes(rota) && !digitando()) desenhar();
+  }) : null;
+  if (pararPasta) iniciarPasta(() => calc);
+
   const parar = assinar((estado) => {
     sinc.atualizar(estado);
     calc = calcular(estado);
@@ -159,6 +170,7 @@ export function montarPainel(root, { perfil, menuDemo, trocarVisao }) {
   return () => {
     parar();
     pararUsuarios?.();
+    pararPasta?.();
     window.removeEventListener('hashchange', aoMudarHash);
   };
 }

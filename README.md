@@ -17,15 +17,25 @@ fornos da coqueria. Publicado em https://reframax-primarias.netlify.app (site
   que viram as observações do RDO. Lançamento não se altera no campo: quem errou
   pede correção ao planejador.
 - **Painel:** Visão geral, Mapa visual, Curva S por BM (revestimento em fornos,
-  meta de 36 por BM do dia 16 ao 15, com a semana atual destacada), RDO no
-  formato PLAN-RFX-002, Checklists (aprovar ou devolver as fotos; o número segue
+  previsto e replanejado da planilha, semana a semana, agrupados por BM do dia
+  16 ao 15, com a semana atual destacada), RDO igual às abas da PLAN-RFX-002
+  (numeração continua a da planilha; a sopragem registrada no Diário vira a
+  coluna "SOPRAGEM DOS FORNOS"), Checklists (aprovar ou devolver as fotos; o número segue
   a sequência da medição), Documentos, Lançamentos, Correções, Desvios, Usuários
   e Configuração.
 - **Documentos:** PDF do mapa, da Curva S, do espelho da medição e do checklist
   com as fotos (por forno ou o BM inteiro), e as planilhas de controle
-  preenchidas pelo app: Gestão Visual, Curva S e Resumo da medição. O app mexe
-  só nas células de dados; fórmulas, gráficos, tabelas dinâmicas e macros ficam
-  como estavam, e o Excel recalcula ao abrir.
+  preenchidas pelo app: Gestão Visual, Curva S, RDO e Resumo da medição. O app
+  mexe só nas células de dados; fórmulas, gráficos, tabelas dinâmicas e macros
+  ficam como estavam, e o Excel recalcula ao abrir. A coluna de medição da
+  Gestão Visual fica com a equipe.
+- **Pasta primarias:** no Chrome ou no Edge do computador, o planejador escolhe
+  a pasta uma vez (Documentos). Com o painel aberto, a cada minuto o app olha as
+  planilhas: o que mudou no Excel vem para o app (base do mapa, previsto da
+  Curva S, último RDO) e o que mudou no app vai para o Excel (no máximo a cada
+  10 minutos por arquivo, ou na hora pelo botão "Sincronizar agora"). Arquivo
+  aberto no Excel espera fechar. Antes de mudar um arquivo, o app guarda uma
+  cópia do dia em `_backup_app`, ao lado dele (ficam as 7 mais recentes).
 - **Sem internet:** o que for lançado (fotos inclusive) fica no aparelho e sobe
   sozinho quando a rede volta. O aviso no topo mostra "Sem internet", "Enviando"
   ou "Em dia".
