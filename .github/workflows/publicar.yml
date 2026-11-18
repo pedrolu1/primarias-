@@ -1,8 +1,8 @@
 name: Publicar
 
-# Cada push na main monta o app (e confere que ele compila). Se o secret
-# NETLIFY_AUTH_TOKEN existir, também publica em https://reframax-primarias.netlify.app;
-# sem ele, a publicação é feita pelo Claude, pelo conector da Netlify.
+# Cada push na main monta o app e confere que ele compila. Quem publica em
+# https://reframax-primarias.netlify.app é a própria Netlify, ligada a este
+# repositório. Com o secret NETLIFY_AUTH_TOKEN, este workflow também publica.
 # As chaves do Firebase ficam em src/lib/firebase-config.js (não são senha).
 
 on:

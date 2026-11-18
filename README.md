@@ -54,9 +54,10 @@ Para apontar para outro projeto Firebase sem mexer no código, copie
    - Firestore Database → Criar banco de dados → local `southamerica-east1`
      (São Paulo) → modo de produção. Na aba Regras, colar o conteúdo de
      `firestore.rules` e Publicar.
-2. **Publicar:** cada push na `main` monta o app no GitHub Actions. Com o secret
-   `NETLIFY_AUTH_TOKEN` (token pessoal da Netlify) no repositório, ele também
-   publica; sem o secret, publique pelo conector da Netlify do Claude.
+2. **Publicar:** o site `reframax-primarias` da Netlify está ligado a este
+   repositório (Site configuration → Build & deploy → Repository): cada push na
+   `main` publica sozinho, com o build do `netlify.toml`. O GitHub Actions só
+   confere se o app compila.
 3. **Primeira conta:** abra o app e toque em "Criar conta". Essa conta vira o
    dono do app; as próximas aparecem para ele liberar na tela Usuários.
 4. **Senha provisória (opcional):** Firebase → Configurações do projeto → Contas
