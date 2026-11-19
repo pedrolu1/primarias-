@@ -119,9 +119,9 @@ function pedirAcesso(sugestao) {
     botao.disabled = true;
     try {
       await solicitarAcesso({ nome: nome.value, matricula: sugestao.matricula });
-    } catch {
+    } catch (err) {
       botao.disabled = false;
-      toast('Não foi possível enviar o pedido. Confira a internet.', 'error');
+      toast(mensagemDeErro(err), 'error', 7000);
     }
   } }, 'Pedir acesso ao Primárias');
   mount(app, [el('div', { class: 'acesso' }, [el('div', { class: 'acesso-caixa' }, [

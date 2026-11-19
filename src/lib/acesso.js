@@ -23,6 +23,8 @@ function comPrazo(promessa, ms = 20000) {
   return Promise.race([promessa, new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), { code: 'auth/timeout' })), ms))]);
 }
 
+const SEM_LOGIN = 'O login por matrícula ainda não foi ligado no Firebase do app (Authentication, método E-mail/senha). Quem administra o Firebase precisa ativar.';
+
 export function mensagemDeErro(err) {
   const mapa = {
     'auth/invalid-email': 'Matrícula inválida: são 6 números.',
@@ -35,11 +37,15 @@ export function mensagemDeErro(err) {
     'auth/requires-recent-login': 'Por segurança, saia e entre de novo antes de trocar a senha.',
     'auth/network-request-failed': 'Sem conexão. Para entrar pela primeira vez neste aparelho precisa de internet.',
     'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.',
-    'auth/operation-not-allowed': 'O login por matrícula ainda não foi ligado no Firebase (Authentication, método E-mail/senha).',
+    'auth/operation-not-allowed': SEM_LOGIN,
+    'auth/configuration-not-found': SEM_LOGIN,
+    'auth/admin-restricted-operation': 'O Firebase do app está bloqueando contas novas (Authentication, Configurações, Ações do usuário: ative a criação de contas).',
     'auth/timeout': 'O servidor demorou para responder. Confira a internet e tente de novo.',
+    'permission-denied': 'O banco do app recusou a gravação. Confira se as regras do Firebase foram publicadas.',
     'senha-atual': 'A senha atual não confere.'
   };
-  return mapa[err?.code] || 'Não foi possível concluir. Tente de novo.';
+  // erro sem tradução: mostra o código, para o print já dizer o motivo
+  return mapa[err?.code] || `Não foi possível concluir. Tente de novo.${err?.code ? ` (código: ${err.code})` : ''}`;
 }
 
 // ---------------------------------------------------------------------------
