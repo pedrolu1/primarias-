@@ -85,9 +85,9 @@ export function etiquetaEtapa(etapa) {
   return el('span', { class: `etiqueta-etapa cor-${etapa.id}` }, [el('span', { class: 'ponto' }), etapa.curto]);
 }
 
-export function legendaEtapas({ ativas = null, aoAlternar = null } = {}) {
+export function legendaEtapas({ ativas = null, aoAlternar = null, pendente = true } = {}) {
   const itens = [
-    el('span', {}, [el('span', { class: 'ponto vazio' }), 'Pendente']),
+    pendente ? el('span', {}, [el('span', { class: 'ponto vazio' }), 'Pendente']) : null,
     ...ETAPAS_MAPA.map((e, i) => {
       const conteudo = [el('span', { class: `ponto cor-${e.id}` }), `${i + 1} ${e.curto}`];
       if (!aoAlternar) return el('span', {}, conteudo);

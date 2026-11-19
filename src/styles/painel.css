@@ -6,9 +6,12 @@
 .topo-acoes { display: flex; align-items: center; gap: 10px; }
 
 /* faixa de indicadores: um bloco só, dividido, em vez de cartões soltos */
-.indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); border-radius: var(--r-lg); background: var(--bg-2); border: 1px solid var(--border-soft); overflow: hidden; }
-.indicador { padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid var(--border-soft); position: relative; }
-.indicador:last-child { border-right: none; }
+.indicadores { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; border-radius: var(--r-lg); background: var(--border); border: 1px solid var(--border-soft); overflow: hidden; }
+.indicador { padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; background: var(--bg-2); position: relative; min-width: 0; }
+@media (max-width: 1180px) { .indicadores { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+button.indicador { text-align: left; color: inherit; font: inherit; border: none; cursor: pointer; transition: background var(--dur-fast); }
+button.indicador:hover { background: var(--bg-3); }
 .indicador > span { font-size: 13px; color: var(--text-2); font-weight: 600; }
 .indicador .num { font-size: 38px; line-height: 1.05; }
 .indicador .num small { font-size: 18px; color: var(--text-2); font-weight: 600; margin-left: 4px; }
@@ -72,7 +75,6 @@ table.data-table.tabela-estreita { min-width: 0; }
 .tabela-compacta thead th { padding: 10px 14px; }
 .data-table td.n, .data-table th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .data-table tr.semana-atual td { background: color-mix(in srgb, var(--accent-500) 10%, var(--bg-2)); }
-.acoes-linha { display: flex; gap: 6px; justify-content: flex-end; }
 
 /* ---- Aprovações ---- */
 .pedido { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; padding: 14px 16px; border-radius: var(--r-lg); background: var(--bg-2); border: 1px solid var(--border-soft); }
@@ -151,6 +153,8 @@ table.data-table.tabela-estreita { min-width: 0; }
   .sidebar-footer { flex-direction: row; border-top: none; padding-top: 0; }
   .sidebar-footer .btn-block { width: 36px; padding: 0; }
   .desktop-topbar { position: static; padding: 0 16px; height: 54px; }
+  .desktop-topbar > div:first-child p, .topo-acoes .ao-vivo { display: none; }
+  .topo-acoes { gap: 6px; }
   .desktop-content { padding: 16px; }
   .indicador .num { font-size: 32px; }
 }

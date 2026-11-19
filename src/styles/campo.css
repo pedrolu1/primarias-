@@ -64,28 +64,27 @@
 }
 @keyframes chamar { 0% { transform: scale(0.9); opacity: 0.9; } 100% { transform: scale(1.5); opacity: 0; } }
 
-/* ---- Hoje: semana em destaque ---- */
+/* ---- Hoje: semana e números do dia num cartão só ---- */
 .semana-hero {
   position: relative; overflow: hidden;
-  display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center;
-  padding: 20px; border-radius: var(--r-xl);
+  display: grid; grid-template-columns: auto 1fr; gap: 12px 16px; align-items: center;
+  padding: 16px; border-radius: var(--r-xl);
   background:
     radial-gradient(120% 140% at 0% 0%, rgba(47, 98, 214, 0.24), transparent 55%),
     var(--bg-2);
   border: 1px solid var(--border);
 }
-.semana-hero h2 { font-size: 30px; line-height: 1.02; }
-.semana-hero p { color: var(--text-1); font-size: 14.5px; margin-top: 6px; line-height: 1.4; }
+.semana-hero .anel { --anel-num: 28px; }
+.semana-hero .anel-centro small { font-size: 11.5px; margin-top: 2px; }
+.semana-hero h2 { font-size: 26px; line-height: 1.02; }
+.semana-hero p { color: var(--text-1); font-size: 14px; margin-top: 4px; line-height: 1.35; }
 .semana-hero .meta-ok { color: var(--ok-500); font-weight: 700; }
-
-/* termômetro de XP: nível em °C até 1200 °C */
-.termometro { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: var(--r-lg); background: var(--bg-2); border: 1px solid var(--border-soft); cursor: pointer; text-align: left; color: inherit; width: 100%; }
-.termometro-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.termometro-topo strong { font-family: var(--font-display); font-size: 26px; line-height: 1; }
-.termometro-topo span { font-size: 13px; color: var(--text-2); }
-.termometro-barra { position: relative; height: 12px; border-radius: 6px; background: var(--bg-4); overflow: hidden; }
-.termometro-barra i { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: var(--brasa-grad); box-shadow: 0 0 14px var(--brasa-glow); transition: width 1s var(--ease-out); }
-.termometro-escala { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-3); }
+.semana-numeros { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--border-soft); padding-top: 10px; }
+.semana-numeros div { text-align: center; padding: 0 4px; }
+.semana-numeros div + div { border-left: 1px solid var(--border-soft); }
+.semana-numeros .num { display: block; font-size: 24px; line-height: 1.1; }
+.semana-numeros .num small { font-size: 14px; color: var(--text-2); }
+.semana-numeros > div > small { font-size: 12px; color: var(--text-2); }
 
 /* números do dia */
 .dia-numeros { display: grid; grid-template-columns: repeat(3, 1fr); border-radius: var(--r-lg); background: var(--bg-2); border: 1px solid var(--border-soft); }
@@ -97,13 +96,12 @@
 /* fornos na frente de serviço, com a próxima etapa a um toque */
 .frente { display: flex; flex-direction: column; gap: 8px; }
 .forno-linha {
-  display: grid; grid-template-columns: 58px 1fr; grid-template-areas: 'nome seis' 'falta botao'; align-items: center; gap: 8px 12px;
+  display: grid; grid-template-columns: 58px 1fr; grid-template-areas: 'nome seis'; align-items: center; gap: 8px 12px;
   padding: 12px 12px 12px 14px; border-radius: var(--r-lg); background: var(--bg-2); border: 1px solid var(--border-soft);
 }
 .forno-linha .nome { grid-area: nome; font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1; }
 .forno-linha .nome small { display: block; font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--text-2); margin-top: 3px; }
 .forno-linha .seis { grid-area: seis; }
-.forno-linha .falta { grid-area: falta; grid-column: 1 / 2; font-size: 13px; color: var(--text-2); display: none; }
 .forno-linha .rodape { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .forno-linha .rodape span { font-size: 13px; color: var(--text-2); }
 .seis { display: flex; gap: 4px; align-items: center; }
@@ -115,6 +113,7 @@
   color: var(--text-0); font-weight: 700; font-size: 13.5px; white-space: nowrap;
 }
 .proxima:active { transform: scale(0.96); }
+.proxima small { font-size: 11.5px; font-weight: 700; color: var(--text-2); }
 
 /* meus lançamentos */
 .meu-lanc { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-soft); }
@@ -322,5 +321,5 @@
 .registro small { font-size: 12.5px; color: var(--text-2); }
 /* sopragem: grade de fornos do bloco */
 .grade-fornos { display: grid; grid-template-columns: repeat(var(--colunas, 6), minmax(0, 1fr)); gap: 6px; }
-.forno-op { height: 44px; border-radius: var(--r-md, 10px); border: 1px solid var(--border); background: var(--bg-2); color: var(--text-1); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; }
-.forno-op.ativo { background: var(--accent-grad); color: #fff; border-color: transparent; }
+.sopro-op { height: 44px; border-radius: var(--r-md, 10px); border: 1px solid var(--border); background: var(--bg-2); color: var(--text-1); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.sopro-op.ativo { background: var(--accent-grad); color: #fff; border-color: transparent; }

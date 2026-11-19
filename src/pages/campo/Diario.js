@@ -148,7 +148,7 @@ function escolherFornos(calc, blocoAtual, redesenhar) {
     el('div', { class: 'grade-fornos', style: { '--colunas': String(Math.min(FORNOS_POR_BLOCO, 6)) } }, fornos.map((f) => {
       const marcado = soprados.has(f.id);
       return el('button', {
-        type: 'button', class: `forno-op${marcado ? ' ativo' : ''}`, 'aria-pressed': String(marcado),
+        type: 'button', class: `sopro-op${marcado ? ' ativo' : ''}`, 'aria-pressed': String(marcado),
         'aria-label': `Forno ${f.forno} do bloco ${f.bloco}`,
         onclick: () => { if (marcado) soprados.delete(f.id); else soprados.add(f.id); redesenhar(); }
       }, `F${String(f.forno).padStart(2, '0')}`);

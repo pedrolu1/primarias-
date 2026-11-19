@@ -1,5 +1,5 @@
-// Hoje: a meta da semana, a temperatura da pessoa, a frente de serviço com a
-// próxima etapa a um toque e o que a equipe está lançando agora.
+// Hoje: a meta da semana, a frente de serviço com a próxima etapa a um toque
+// e o que a equipe está lançando agora.
 import { el } from '../../base/dom.js';
 import { anel, seis, statusChip } from '../../components/base.js';
 import { feed } from '../../components/feed.js';
@@ -8,10 +8,10 @@ import { abrirTelaForno } from '../../components/telaForno.js';
 import { abrirLancamento } from '../../components/lancar.js';
 import { iconeEtapa, ic } from '../../lib/icones.js';
 import { ETAPAS_MAPA, FORNOS, LADOS, contratoAtivo, etapaPorId, noMeio, rotulo } from '../../data/obra.js';
-import { semanaAtual, proximaDoLado, resumoAlvos, checklists, NIVEL_MAX } from '../../lib/calculo.js';
+import { semanaAtual, proximaDoLado, resumoAlvos, checklists } from '../../lib/calculo.js';
 import { hoje, porExtenso } from '../../lib/datas.js';
 
-export function paginaHoje({ calc, perfil, stats, lancar, ir }) {
+export function paginaHoje({ calc, perfil, stats, lancar, ir, redesenhar }) {
   const bat = contratoAtivo().bateria;
   const sem = semanaAtual(calc);
   const fornosBat = FORNOS.filter((f) => f.bateria === bat);
@@ -20,37 +20,26 @@ export function paginaHoje({ calc, perfil, stats, lancar, ir }) {
   const hj = hoje();
   const equipeHoje = calc.validos.filter((l) => l.data === hj).reduce((s, l) => s + l.prims.length, 0);
 
+  // a temperatura e a sequência já ficam no topo da tela; aqui só o que
+  // ajuda a decidir o próximo lançamento, para a frente de serviço subir
   const hero = el('section', { class: 'semana-hero' }, [
-    anel({ fracao: sem.meta ? sem.fechados / sem.meta : 0, chave: 'semana', centro: [el('span', { class: 'num' }, String(sem.fechados)), el('small', {}, `de ${sem.meta} fornos`)] }),
+    anel({ fracao: sem.meta ? sem.fechados / sem.meta : 0, tamanho: 84, espessura: 9, chave: 'semana', centro: [el('span', { class: 'num' }, String(sem.fechados)), el('small', {}, `de ${sem.meta}`)] }),
     el('div', {}, [
       el('h2', {}, `Semana ${sem.semana.replace('S-', '')}`),
-      el('p', {}, bateu ? [el('span', { class: 'meta-ok' }, 'Meta da semana batida. '), 'Cada forno a mais é saldo.'] : sem.meta ? `Faltam ${sem.meta - sem.fechados} forno${sem.meta - sem.fechados > 1 ? 's' : ''} para a meta da semana.` : 'Sem meta prevista nesta semana.'),
-      el('p', { class: 'fraco', style: { fontSize: '13px' } }, `Bateria ${bat}: ${concluidos} de ${fornosBat.length} fornos concluídos`)
-    ])
-  ]);
-
-  const termometro = el('button', { class: 'termometro', type: 'button', onclick: () => ir('perfil') }, [
-    el('div', { class: 'termometro-topo' }, [
-      el('strong', {}, `${stats.graus} °C`),
-      el('span', {}, stats.nivel >= NIVEL_MAX ? 'Temperatura máxima' : `faltam ${stats.ate - stats.xp} XP para ${stats.graus + 100} °C`)
+      el('p', {}, bateu ? [el('span', { class: 'meta-ok' }, 'Meta batida. '), 'Cada forno a mais é saldo.'] : sem.meta ? `Faltam ${sem.meta - sem.fechados} forno${sem.meta - sem.fechados > 1 ? 's' : ''} para a meta da semana.` : 'Sem meta prevista nesta semana.')
     ]),
-    el('div', { class: 'termometro-barra' }, el('i', { style: { width: `${Math.round(stats.fracao * 100)}%` } })),
-    el('div', { class: 'termometro-escala' }, [el('span', {}, `${stats.graus} °C`), el('span', {}, '1200 °C')])
-  ]);
-
-  const numeros = el('div', { class: 'dia-numeros' }, [
-    el('div', {}, [el('span', { class: 'num' }, String(stats.hojeEtapas)), el('small', {}, 'suas etapas hoje')]),
-    el('div', {}, [el('span', { class: 'num' }, String(equipeHoje)), el('small', {}, 'equipe hoje')]),
-    el('div', {}, [el('span', { class: 'num' }, String(stats.sequencia)), el('small', {}, stats.sequencia === 1 ? 'dia seguido' : 'dias seguidos')])
+    el('div', { class: 'semana-numeros' }, [
+      el('div', {}, [el('span', { class: 'num' }, String(stats.hojeEtapas)), el('small', {}, 'suas etapas hoje')]),
+      el('div', {}, [el('span', { class: 'num' }, String(equipeHoje)), el('small', {}, 'da equipe hoje')]),
+      el('div', {}, [el('span', { class: 'num' }, [String(concluidos), el('small', {}, `/${fornosBat.length}`)]), el('small', {}, `fornos da bateria ${bat}`)])
+    ])
   ]);
 
   return [
     el('p', { class: 'fraco', style: { fontSize: '14px', marginBottom: '-6px' } }, `Bom trabalho, ${perfil.nome}. Hoje é ${porExtenso(hj)}.`),
     hero,
-    termometro,
-    numeros,
     fotosPendentes(calc, ir),
-    frente(calc, fornosBat, perfil),
+    frente(calc, fornosBat, perfil, redesenhar),
     el('section', { class: 'pilha' }, [
       el('div', { class: 'titulo-secao' }, ['Ao vivo na bateria', el('span', { class: 'ao-vivo' }, 'tempo real')]),
       feed(calc.validos, {
@@ -61,29 +50,44 @@ export function paginaHoje({ calc, perfil, stats, lancar, ir }) {
   ];
 }
 
+const NA_TELA = 5;
+let frenteToda = false;
+
+/** A próxima etapa do forno: a do lado mais atrasado (é o que segura o forno).
+ *  Se o outro lado está na mesma etapa, entram os dois. */
+function proximaDoForno(calc, fid) {
+  const lados = LADOS.map((l) => ({ lado: l.id, prox: proximaDoLado(calc, fid, l.id) })).filter((x) => x.prox);
+  if (!lados.length) return null;
+  const ordem = Math.min(...lados.map((x) => etapaPorId[x.prox.etapa.id].ordem));
+  const juntos = lados.filter((x) => etapaPorId[x.prox.etapa.id].ordem === ordem);
+  return { etapa: juntos[0].prox.etapa, alvos: juntos.flatMap((x) => x.prox.alvos), lados: juntos.map((x) => x.lado) };
+}
+
 /** Fornos com serviço começado e ainda não concluídos. Toque no forno abre a
- *  tela dele; o botão lança direto a próxima etapa do lado mais atrasado. */
-function frente(calc, fornosBat, perfil) {
+ *  tela dele; o botão lança direto a próxima etapa, já na confirmação. */
+function frente(calc, fornosBat, perfil, redesenhar) {
   const ultimo = ETAPAS_MAPA.length - 1;
   const abertos = fornosBat
     .filter((f) => !calc.fornos[f.id].concluidoEm && calc.fornos[f.id].niveis.some((n) => n >= 0))
     .map((f) => ({ f, soma: calc.fornos[f.id].niveis.reduce((s, n) => s + n + 1, 0) }))
-    .sort((a, b) => b.soma - a.soma || a.f.id.localeCompare(b.f.id));
-  let lista = abertos.slice(0, 4).map((x) => x.f);
+    .sort((a, b) => b.soma - a.soma || a.f.id.localeCompare(b.f.id))
+    .map((x) => x.f);
+  let lista = abertos;
   let titulo = 'Na frente de serviço';
   if (!lista.length) {
     lista = fornosBat.filter((f) => !calc.fornos[f.id].concluidoEm).slice(0, 3);
     titulo = 'Próximos fornos';
   }
   if (!lista.length) return null;
+  const sobra = lista.length - NA_TELA;
+  const visiveis = frenteToda || sobra <= 1 ? lista : lista.slice(0, NA_TELA);
   return el('section', { class: 'pilha' }, [
-    el('div', { class: 'titulo-secao' }, [titulo, el('small', {}, abertos.length > 4 ? `${abertos.length} fornos abertos` : 'toque para abrir')]),
-    el('div', { class: 'frente' }, lista.map((f) => {
+    el('div', { class: 'titulo-secao' }, [titulo, el('small', {}, abertos.length ? `${abertos.length} forno${abertos.length > 1 ? 's' : ''} aberto${abertos.length > 1 ? 's' : ''}` : 'toque para abrir')]),
+    el('div', { class: 'frente' }, visiveis.map((f) => {
       const niveis = calc.fornos[f.id].niveis;
       const prontas = niveis.filter((n) => n === ultimo).length;
       const faltam = niveis.reduce((s, n) => s + (ultimo - n), 0);
-      // a próxima etapa do lado mais atrasado (é o que segura o forno)
-      const prox = LADOS.map((l) => proximaDoLado(calc, f.id, l.id)).filter(Boolean).sort((a, b) => etapaPorId[a.etapa.id].ordem - etapaPorId[b.etapa.id].ordem)[0];
+      const prox = proximaDoForno(calc, f.id);
       return el('div', { class: 'forno-linha', role: 'button', tabindex: '0', 'aria-label': `Abrir ${rotulo(f.id)}`, onclick: () => abrirTelaForno(f.id, { perfil }), onkeydown: (ev) => ev.key === 'Enter' && abrirTelaForno(f.id, { perfil }) }, [
         el('div', { class: 'nome' }, [`F${String(f.forno).padStart(2, '0')}`, el('small', {}, `bloco ${f.bloco}`)]),
         seis(calc, f.id),
@@ -92,10 +96,15 @@ function frente(calc, fornosBat, perfil) {
           prox ? el('button', {
             class: `proxima cor-${prox.etapa.id}`, type: 'button',
             onclick: (ev) => { ev.stopPropagation(); abrirLancamento({ perfil, etapa: prox.etapa.id, fornoId: f.id, alvos: prox.alvos }); }
-          }, [el('span', { html: iconeEtapa(prox.etapa.id, 16), style: { display: 'inline-flex', color: 'var(--cor)' } }), `Lançar ${noMeio(prox.etapa)}`]) : null
+          }, [
+            el('span', { html: iconeEtapa(prox.etapa.id, 16), style: { display: 'inline-flex', color: 'var(--cor)' } }),
+            `Lançar ${noMeio(prox.etapa)}`,
+            prox.lados.length === 1 ? el('small', {}, prox.lados[0]) : null
+          ]) : null
         ])
       ]);
-    }))
+    })),
+    sobra > 1 ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => { frenteToda = !frenteToda; redesenhar(); } }, frenteToda ? 'Mostrar menos' : `Ver os outros ${sobra} fornos`) : null
   ]);
 }
 

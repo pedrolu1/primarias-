@@ -27,25 +27,25 @@ export function paginaLancamentos(ctx) {
     ]),
     lista.length
       ? el('div', { class: 'table-wrap' }, el('table', { class: 'data-table tabela-compacta' }, [
-          el('thead', {}, el('tr', {}, ['Etapa', 'Onde', 'Primárias', 'Dia do serviço', 'Quem', 'Lançado', leitura ? '' : 'Ações'].map((t, i) => el('th', { class: i === 2 ? 'n' : '' }, t)))),
+          el('thead', {}, el('tr', {}, ['Etapa', 'Onde', 'Primárias', 'Dia do serviço', 'Quem', 'Lançado', ''].map((t, i) => el('th', { class: i === 2 ? 'n' : '' }, t)))),
           el('tbody', {}, lista.slice(0, 200).map((l) => el('tr', { style: l.status === 'cancelado' ? { opacity: '0.45' } : null }, [
             el('td', {}, etiquetaEtapa(etapaPorId[l.etapa])),
             el('td', { style: { maxWidth: '320px' } }, resumoAlvos(l.prims, l.etapa).join(', ')),
             el('td', { class: 'n strong' }, String(l.prims.length)),
-            el('td', {}, completa(l.data)),
+            // o dia do serviço é editável ali mesmo (planejador); o resto só lê
+            leitura || l.status !== 'valido'
+              ? el('td', {}, completa(l.data))
+              : el('td', {}, el('input', { class: 'input', type: 'date', value: l.data, max: hoje(), 'aria-label': 'Dia do serviço (clique para trocar)', title: 'Clique para trocar o dia', style: { width: '150px', height: '34px' }, onchange: (ev) => { if (ev.target.value) { trocarDataLancamento(l.id, ev.target.value, perfil.nome); toast('Dia do lançamento trocado.', 'ok'); } } })),
             el('td', {}, l.autor?.nome || ''),
             el('td', {}, l.status === 'cancelado' ? `cancelado por ${l.canceladoPor}` : haQuanto(l.criadoEmLocal)),
             leitura || l.status !== 'valido'
               ? el('td', {})
-              : el('td', {}, el('div', { class: 'acoes-linha' }, [
-                  el('input', { class: 'input', type: 'date', value: l.data, max: hoje(), 'aria-label': 'Trocar o dia', style: { width: '150px', height: '34px' }, onchange: (ev) => { if (ev.target.value) { trocarDataLancamento(l.id, ev.target.value, perfil.nome); toast('Dia do lançamento trocado.', 'ok'); } } }),
-                  el('button', { class: 'btn btn-danger btn-sm', type: 'button', onclick: () => {
-                    const motivo = prompt('Motivo do cancelamento (fica registrado):');
-                    if (motivo == null) return;
-                    cancelarLancamento(l.id, perfil.nome, motivo);
-                    toast('Lançamento cancelado.', 'ok');
-                  } }, 'Cancelar')
-                ]))
+              : el('td', {}, el('button', { class: 'btn btn-danger btn-sm', type: 'button', onclick: () => {
+                  const motivo = prompt('Motivo do cancelamento (fica registrado):');
+                  if (motivo == null) return;
+                  cancelarLancamento(l.id, perfil.nome, motivo);
+                  toast('Lançamento cancelado.', 'ok');
+                } }, 'Cancelar'))
           ])))
         ]))
       : null,

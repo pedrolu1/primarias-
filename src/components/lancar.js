@@ -1,5 +1,7 @@
 // Fluxo de lançamento: etapa → onde → confirmar. Pensado para o celular, com
 // botões grandes, o caminho mais curto já selecionado e a comemoração no fim.
+// Vindo do botão de um forno (etapa e forno já sabidos), abre direto na
+// confirmação, com as primárias para ajustar ali mesmo.
 import { el } from '../base/dom.js';
 import { abrirFolha, seis, etiquetaEtapa } from './base.js';
 import { ic, iconeEtapa } from '../lib/icones.js';
@@ -21,16 +23,19 @@ export function mostrarBlocoAtivo(raiz) {
 }
 
 /**
- * Abre o lançamento. Com `etapa` e `fornoId` já vem no passo "onde", com o
+ * Abre o lançamento. Com `etapa` e `fornoId` já vem na confirmação, com o
  * forno escolhido; `alvos` restringe a seleção (ex.: só o lado máquina).
  */
 export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = null, aoLancar = null }) {
   const bat = contratoAtivo().bateria;
   const fornosBat = FORNOS.filter((f) => f.bateria === bat);
-  const st = { passo: etapa ? 2 : 1, etapa, bloco: fornoId ? fornoPorId[fornoId].bloco : null, sel: new Map(), data: hoje(), obs: '' };
+  const st = { passo: etapa ? 2 : 1, etapa, bloco: fornoId ? fornoPorId[fornoId].bloco : null, sel: new Map(), data: hoje(), outroDia: false, obs: '' };
   if (etapa && fornoId) {
     const lib = liberadosNoForno(calcular(estadoAtual()), etapa, fornoId).map((a) => a.id).filter((id) => !alvos || alvos.includes(id));
-    if (lib.length) st.sel.set(fornoId, new Set(lib));
+    if (lib.length) {
+      st.sel.set(fornoId, new Set(lib));
+      st.passo = 3;
+    }
   }
   const folha = abrirFolha({ titulo: '', corpo: [], classe: 'folha-lancar' });
   let passoDesenhado = 0;
@@ -39,6 +44,11 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
     return [...st.sel.values()].reduce((s, alvos) => s + [...alvos].reduce((t, a) => t + primariasDoAlvo(a).length, 0), 0);
   }
   const alvosEscolhidos = () => [...st.sel.values()].flatMap((s) => [...s]);
+  const voltarParaOnde = () => {
+    for (const [fid, alvos] of st.sel) if (!alvos.size) st.sel.delete(fid);
+    st.passo = 2;
+    desenhar();
+  };
   const passos = () => el('div', { class: 'passos', 'aria-hidden': 'true' }, [1, 2, 3].map((n) => el('span', { class: n < st.passo ? 'feito' : n === st.passo ? 'atual' : '' })));
   desenhar();
 
@@ -134,15 +144,16 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
     mostrarBlocoAtivo(folha.caixa);
   }
 
-  /** Ajuste fino do forno escolhido: quais primárias (ou lados) entram. */
-  function ajusteForno(calc, e, fid) {
+  /** Ajuste fino do forno escolhido: quais primárias (ou lados) entram.
+   *  Na confirmação não tem "Tirar": desmarcar tudo só desliga o botão. */
+  function ajusteForno(calc, e, fid, { naConfirmacao = false } = {}) {
     const escolhidos = st.sel.get(fid);
     const alvos = alvosDoForno(calc, e.id, fid);
     const alternar = (id) => {
       vibrar(6);
       if (escolhidos.has(id)) escolhidos.delete(id);
       else escolhidos.add(id);
-      if (!escolhidos.size) st.sel.delete(fid);
+      if (!escolhidos.size && !naConfirmacao) st.sel.delete(fid);
       desenhar();
     };
     const botao = (a, rotulo, extra = '') => el('button', {
@@ -158,7 +169,10 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
     ])));
     const bloqueadas = alvos.filter((a) => !a.ok && !a.feito);
     return el('div', { class: 'selecao-forno' }, [
-      el('div', { class: 'selecao-forno-topo' }, [fid.replace('-', ' · '), el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => { st.sel.delete(fid); desenhar(); } }, 'Tirar')]),
+      el('div', { class: 'selecao-forno-topo' }, [
+        naConfirmacao ? `${fid.replace('-', ' · ')} · toque para tirar ou pôr` : fid.replace('-', ' · '),
+        naConfirmacao ? null : el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => { st.sel.delete(fid); desenhar(); } }, 'Tirar')
+      ]),
       conteudo,
       bloqueadas.length ? el('div', { class: 'bloqueado-nota' }, [el('span', { html: ic.lock(14) }), `${bloqueadas.map((a) => a.id.split('-').slice(2).join(' ')).join(', ')}: ${bloqueadas[0].motivo}`]) : null
     ]);
@@ -170,23 +184,34 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
     const alvos = alvosEscolhidos();
     const prims = [...new Set(alvos.flatMap(primariasDoAlvo))];
     const n = prims.length;
-    const fornos = st.sel.size;
+    const fornos = [...st.sel.values()].filter((s) => s.size).length;
     const xp = n * XP_POR_PRIMARIA;
-    const botao = el('button', { type: 'button', class: 'btn btn-brasa', onclick: () => confirmar(botao) }, [el('span', { html: iconeEtapa(e.id, 22) }), `Lançar ${noMeio(e)}`]);
+    const umForno = st.sel.size === 1 ? [...st.sel.keys()][0] : null;
+    const botao = el('button', { type: 'button', class: 'btn btn-brasa', disabled: !n, onclick: () => confirmar(botao) }, n ? [el('span', { html: iconeEtapa(e.id, 22) }), `Lançar ${noMeio(e)}`] : 'Marque o que foi feito');
+    const dia = (rotuloDia, data) => el('button', {
+      type: 'button', class: `tipo-op${!st.outroDia && st.data === data ? ' ativo' : ''}`, 'aria-pressed': String(!st.outroDia && st.data === data),
+      onclick: () => { st.data = data; st.outroDia = false; desenhar(); }
+    }, rotuloDia);
     folha.montar({
       topo: st.topo,
       titulo: 'Confere e lança',
       subtitulo: 'Depois de lançado, só o planejador altera',
       corpo: [
-        el('div', { class: 'entre' }, [passos(), el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => { st.passo = 2; desenhar(); } }, 'Voltar')]),
+        el('div', { class: 'entre' }, [passos(), el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: voltarParaOnde }, umForno ? 'Outro forno' : 'Voltar')]),
         el('div', { class: `resumo-lanc cor-${e.id}` }, [
           el('div', { class: 'entre' }, [etiquetaEtapa(e), el('span', { class: 'fraco', style: { fontSize: '13px' } }, `+${xp} XP`)]),
-          el('div', {}, [el('span', { class: 'contagem' }, String(n)), el('span', { class: 'fraco' }, ` primária${n > 1 ? 's' : ''} em ${fornos} forno${fornos > 1 ? 's' : ''}`)]),
-          el('ul', {}, resumoAlvos(prims, e.id).map((l) => el('li', {}, [el('span', { class: 'ponto' }), l])))
+          el('div', {}, [el('span', { class: 'contagem' }, String(n)), el('span', { class: 'fraco' }, ` primária${n === 1 ? '' : 's'} em ${fornos} forno${fornos === 1 ? '' : 's'}`)]),
+          umForno ? null : el('ul', {}, resumoAlvos(prims, e.id).map((l) => el('li', {}, [el('span', { class: 'ponto' }), l])))
         ]),
+        umForno ? ajusteForno(calc, e, umForno, { naConfirmacao: true }) : null,
         el('div', { class: 'field' }, [
-          el('label', { class: 'field-label', for: 'lanc-data' }, 'Dia em que foi feito'),
-          el('input', { id: 'lanc-data', class: 'input', type: 'date', value: st.data, max: hoje(), min: somarDias(hoje(), -7), onchange: (ev) => { st.data = ev.target.value || hoje(); } })
+          el('span', { class: 'field-label' }, 'Dia em que foi feito'),
+          el('div', { class: 'tipos-ocorrencia' }, [
+            dia('Hoje', hoje()),
+            dia('Ontem', somarDias(hoje(), -1)),
+            el('button', { type: 'button', class: `tipo-op${st.outroDia ? ' ativo' : ''}`, 'aria-pressed': String(st.outroDia), onclick: () => { st.outroDia = true; desenhar(); } }, 'Outro dia')
+          ]),
+          st.outroDia ? el('input', { id: 'lanc-data', class: 'input', type: 'date', 'aria-label': 'Dia em que foi feito', value: st.data, max: hoje(), min: somarDias(hoje(), -7), onchange: (ev) => { st.data = ev.target.value || hoje(); } }) : null
         ]),
         el('div', { class: 'field' }, [
           el('label', { class: 'field-label', for: 'lanc-obs' }, 'Observação (opcional)'),

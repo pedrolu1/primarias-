@@ -35,7 +35,8 @@ export function paginaVisao({ calc, perfil, leitura, mudou, ir }) {
     indicador(`BM ${rotuloBm(curva.bm)}`, [String(curva.realizado), el('small', {}, `de ${curva.meta}`)], curva.meta ? curva.realizado / curva.meta : 0, curva.faltam ? `faltam ${curva.faltam} fornos até ${curta(curva.fim)}` : 'meta do BM batida', curva.realizado >= curva.meta ? 'bom' : ''),
     indicador(`Semana ${sem.semana}`, [String(sem.fechados), el('small', {}, `de ${sem.meta}`)], sem.meta ? sem.fechados / sem.meta : 0, 'fornos revestidos na semana', sem.meta && sem.fechados >= sem.meta ? 'bom' : ''),
     indicador('Lançado hoje', [String(deHoje.reduce((s, l) => s + l.prims.length, 0)), el('small', {}, 'etapas')], null, deHoje.length ? `${deHoje.length} lançamento${deHoje.length > 1 ? 's' : ''} de ${pessoas} pessoa${pessoas > 1 ? 's' : ''}` : 'nenhum lançamento ainda'),
-    indicador('Pendências', String(pedidos + ckEnviados), null, pedidos + ckEnviados ? `${pedidos} correç${pedidos === 1 ? 'ão' : 'ões'} · ${ckEnviados} checklist${ckEnviados === 1 ? '' : 's'}` : 'nada esperando você', pedidos + ckEnviados ? 'alerta' : '')
+    indicador('Pendências', String(pedidos + ckEnviados), null, pedidos + ckEnviados ? `${pedidos} correç${pedidos === 1 ? 'ão' : 'ões'} · ${ckEnviados} checklist${ckEnviados === 1 ? '' : 's'}` : 'nada esperando você', pedidos + ckEnviados ? 'alerta' : '',
+      leitura || !(pedidos + ckEnviados) ? null : () => ir(pedidos ? 'aprovacoes' : 'checklists'))
   ]);
 
   const cartaoMapa = el('section', { class: 'cartao' }, [
@@ -69,17 +70,20 @@ export function paginaVisao({ calc, perfil, leitura, mudou, ir }) {
       el('div', { class: 'pilha', style: { gap: '18px' } }, [aoVivo, cartaoRdo])
     ]),
     el('section', { class: 'cartao' }, [
-      el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Produção por dia'), el('p', {}, 'Primárias por etapa, últimas 3 semanas. Passe o mouse para ver o dia.')]), legendaEtapas()]),
+      el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Produção por dia'), el('p', {}, 'Primárias por etapa, últimas 3 semanas. Passe o mouse para ver o dia.')]), legendaEtapas({ pendente: false })]),
       graficoProducao(producaoDiaria(calc, somarDias(hj, -20), hj), { altura: 230 })
     ])
   ];
 }
 
-function indicador(rotulo, valor, fracao, texto, classe = '') {
-  return el('div', { class: `indicador ${classe}` }, [
+function indicador(rotulo, valor, fracao, texto, classe = '', aoClicar = null) {
+  const conteudo = [
     el('span', {}, rotulo),
     el('div', { class: 'num' }, valor),
     fracao != null ? el('div', { class: 'barra' }, el('i', { style: { width: `${Math.min(100, fracao * 100)}%` } })) : null,
-    el('p', {}, texto)
-  ]);
+    el('p', {}, aoClicar ? [texto, ' ›'] : texto)
+  ];
+  return aoClicar
+    ? el('button', { type: 'button', class: `indicador clicavel ${classe}`, onclick: aoClicar }, conteudo)
+    : el('div', { class: `indicador ${classe}` }, conteudo);
 }
