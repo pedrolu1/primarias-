@@ -42,6 +42,7 @@ export function mensagemDeErro(err) {
     'auth/admin-restricted-operation': 'O Firebase do app está bloqueando contas novas (Authentication, Configurações, Ações do usuário: ative a criação de contas).',
     'auth/timeout': 'O servidor demorou para responder. Confira a internet e tente de novo.',
     'permission-denied': 'O banco do app recusou a gravação. Confira se as regras do Firebase foram publicadas.',
+    'tem-dono': 'O app já tem dono. Peça a ele para liberar o seu acesso.',
     'senha-atual': 'A senha atual não confere.'
   };
   // erro sem tradução: mostra o código, para o print já dizer o motivo
@@ -78,7 +79,7 @@ export function observarAcesso(cb) {
       const d = snap.data();
       const perfil = { uid: user.uid, nome: d.nome, matricula: d.matricula, papel: d.papel, dono: dono === user.uid };
       if (d.status === 'negado') return cb({ estado: 'negado', perfil });
-      if (d.status !== 'aprovado') return cb({ estado: 'pendente', perfil, semDono: dono === null });
+      if (d.status !== 'aprovado') return cb({ estado: 'pendente', perfil, semDono: dono === null, donoDesconhecido: dono === undefined });
       if (d.trocarSenha) return cb({ estado: 'trocar-senha', perfil });
       // último acesso, no máximo uma vez a cada meia hora
       const visto = d.ultimoAcessoEm?.toMillis?.() || 0;
@@ -109,7 +110,7 @@ export function entrar(matricula, senha) {
   return comPrazo(signInWithEmailAndPassword(auth, emailDa(matricula), senha));
 }
 
-/** Se o app já tem dono. Sem conseguir ler, responde que tem (a pessoa pode assumir depois). */
+/** Se o app já tem dono. Sem conseguir ler no banco, pergunta ao servidor; sem resposta, null. */
 async function haDono() {
   for (let i = 0; i < 3; i++) {
     try {
@@ -118,7 +119,8 @@ async function haDono() {
       await new Promise((ok) => setTimeout(ok, 700));
     }
   }
-  return true;
+  const s = await statusServidor();
+  return typeof s.temDono === 'boolean' ? s.temDono : null;
 }
 
 /** Vira o dono: cadastro de administrador e prim_config/dono na mesma gravação. */
@@ -136,9 +138,9 @@ function virarDono(uid, dados, { manter = false } = {}) {
 async function registrar({ nome, matricula }) {
   const uid = auth.currentUser.uid;
   const dados = { nome: nome.trim(), matricula: String(matricula).trim(), criadoEm: serverTimestamp() };
-  if (!(await haDono())) {
+  if ((await haDono()) === false) {
     try {
-      await virarDono(uid, dados);
+      await assumirComoDono(dados, { novo: true });
       return;
     } catch {
       /* alguém virou dono antes: segue como cadastro comum */
@@ -147,10 +149,21 @@ async function registrar({ nome, matricula }) {
   await setDoc(doc(db, COL, uid), { ...dados, papel: 'lider', status: 'pendente' });
 }
 
-/** A primeira conta que ficou pendente (sem dono no app) assume como dono. */
-export function assumirComoDono(perfil) {
-  if (modoDemo) return Promise.resolve();
-  return virarDono(auth.currentUser.uid, { nome: perfil.nome, matricula: perfil.matricula }, { manter: true });
+/**
+ * A primeira conta assume como dono. Pelo servidor primeiro: ele grava direto
+ * no banco, sem depender das regras publicadas nem da rede do navegador.
+ * Sem o servidor configurado, grava pelo navegador.
+ */
+export async function assumirComoDono(perfil, { novo = false } = {}) {
+  if (modoDemo) return {};
+  try {
+    return await chamarServidor('assumir-dono');
+  } catch (err) {
+    if (!['nao-configurado', 'rede', 'falhou'].includes(err?.code)) throw err;
+  }
+  // conta nova grava o cadastro inteiro; quem já está pendente só muda papel e situação
+  await virarDono(auth.currentUser.uid, novo ? perfil : { nome: perfil.nome, matricula: perfil.matricula }, { manter: !novo });
+  return {};
 }
 
 /** Conta nova: nasce como líder pendente (ou dono, se for a primeira do app). */

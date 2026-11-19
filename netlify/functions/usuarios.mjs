@@ -1,12 +1,14 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getSecurityRules } from 'firebase-admin/security-rules';
 import { randomInt } from 'node:crypto';
 
 /**
  * /api/usuarios: o que o navegador não pode fazer sozinho com as contas.
  *
- *   GET                                  { configurado }
+ *   GET                                  { configurado, temDono, regras }
+ *   POST { acao: 'assumir-dono' }        a primeira conta vira o dono (só se o app não tem dono)
  *   POST { acao: 'senha', uid }          senha provisória (a pessoa cria a dela no próximo acesso)
  *   POST { acao: 'excluir', uid }        apaga a conta de login e o cadastro no app
  *   POST { acao: 'acesso', uid, ativo }  liga ou desliga o login (bloqueio)
@@ -43,7 +45,15 @@ export default async (req) => {
   } catch {
     return resposta(500, { erro: 'credencial-invalida' });
   }
-  if (req.method === 'GET') return resposta(200, { configurado: Boolean(app) });
+  if (req.method === 'GET') {
+    if (!app) return resposta(200, { configurado: false });
+    const db = getFirestore(app);
+    const [dono, regras] = await Promise.all([
+      db.doc('prim_config/dono').get().then((d) => d.exists, () => null),
+      situacaoRegras(app)
+    ]);
+    return resposta(200, { configurado: true, temDono: dono, regras });
+  }
   if (req.method !== 'POST') return resposta(405, { erro: 'metodo' });
   if (!app) return resposta(503, { erro: 'nao-configurado' });
   const auth = getAuth(app);
@@ -74,13 +84,35 @@ export default async (req) => {
     return resposta(200, { ok: true });
   }
 
-  // daqui em diante, só administrador
   let quem;
   try {
     quem = await auth.verifyIdToken((req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''));
   } catch {
     return resposta(401, { erro: 'sessao' });
   }
+
+  // a primeira conta vira o dono, mesmo se o navegador não conseguiu
+  // gravar no banco (regras antigas ou rede da empresa bloqueando)
+  if (pedido?.acao === 'assumir-dono') {
+    const [matricula, dominio] = String(quem.email || '').split('@');
+    if (dominio !== DOMINIO || !/^\d{6}$/.test(matricula)) return resposta(400, { erro: 'matricula' });
+    const conta = await auth.getUser(quem.uid);
+    const resultado = await db.runTransaction(async (t) => {
+      const donoRef = db.doc('prim_config/dono');
+      const dono = await t.get(donoRef);
+      if (dono.exists) return dono.data().uid === quem.uid ? 'ja-e-dono' : 'tem-dono';
+      const ref = db.doc(`prim_usuarios/${quem.uid}`);
+      const cadastro = await t.get(ref);
+      const nome = String(cadastro.data()?.nome || conta.displayName || matricula).trim().slice(0, 120);
+      t.set(ref, { nome, matricula, papel: 'admin', status: 'aprovado', ...(cadastro.exists ? {} : { criadoEm: FieldValue.serverTimestamp() }) }, { merge: true });
+      t.set(donoRef, { uid: quem.uid, nome, matricula, em: FieldValue.serverTimestamp() });
+      return cadastro.exists ? 'ok' : 'ok-sem-cadastro';
+    });
+    if (resultado === 'tem-dono') return resposta(409, { erro: 'tem-dono' });
+    return resposta(200, { ok: true, cadastroNoServidor: resultado !== 'ok-sem-cadastro', regras: await situacaoRegras(app) });
+  }
+
+  // daqui em diante, só administrador
   const eu = (await db.doc(`prim_usuarios/${quem.uid}`).get()).data();
   if (!(eu && eu.papel === 'admin' && eu.status === 'aprovado')) return resposta(403, { erro: 'sem-permissao' });
 
@@ -126,5 +158,16 @@ export default async (req) => {
 
   return resposta(400, { erro: 'acao' });
 };
+
+/** Se as regras publicadas no Firebase são as deste app (as atuais têm o pedido de senha e o "assume dono"). */
+async function situacaoRegras(app) {
+  try {
+    const ruleset = await getSecurityRules(app).getFirestoreRuleset();
+    const texto = ruleset.source.map((f) => f.content).join('\n');
+    return texto.includes('prim_pedidos_senha') && texto.includes('assumeDono') ? 'atuais' : 'antigas';
+  } catch {
+    return 'desconhecido';
+  }
+}
 
 export const config = { path: '/api/usuarios' };

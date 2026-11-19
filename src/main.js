@@ -4,7 +4,7 @@ import { CREDITO } from './base/ui.js';
 import { toast } from './base/toast.js';
 import {
   observarAcesso, entrar, cadastrar, solicitarAcesso, sair, criarSenhaPropria, mensagemDeErro, matriculaValida,
-  modoDemo, PERFIS_DEMO, entrarDemo, pedirNovaSenha, assumirComoDono
+  modoDemo, PERFIS_DEMO, entrarDemo, pedirNovaSenha, assumirComoDono, statusServidor
 } from './lib/acesso.js';
 import { PAPEIS, FORNOS, contratoAtivo } from './data/obra.js';
 import { calcular } from './lib/calculo.js';
@@ -34,7 +34,12 @@ function mostrar(a) {
   if (a.estado === 'carregando') return trocarTela(() => mount(app, [el('div', { class: 'boot-splash' }, [el('div', { class: 'boot-mark' }, el('div', { class: 'marca marca-lg' }, 'Primárias')), el('div', { class: 'marca-tag' }, 'Carregando…')])]));
   if (a.estado === 'sem-login') return trocarTela(() => (modoDemo ? entradaDemo() : login()));
   if (a.estado === 'sem-acesso') return trocarTela(() => pedirAcesso(a.sugestao || {}));
-  if (a.estado === 'pendente') return trocarTela(() => (a.semDono ? primeiraConta(a.perfil) : aviso('Acesso em análise', `Olá, ${a.perfil.nome}. Seu pedido chegou ao administrador. Assim que ele liberar, esta tela abre o app sozinha.`)));
+  if (a.estado === 'pendente') {
+    trocarTela(() => (a.semDono ? primeiraConta(a.perfil) : aviso('Acesso em análise', `Olá, ${a.perfil.nome}. Seu pedido chegou ao administrador. Assim que ele liberar, esta tela abre o app sozinha.`)));
+    // o navegador não conseguiu ler se o app tem dono: o servidor responde
+    if (a.donoDesconhecido) statusServidor().then((s) => s.temDono === false && ultimo === a && trocarTela(() => primeiraConta(a.perfil)));
+    return;
+  }
   if (a.estado === 'negado') return trocarTela(() => aviso('Acesso não liberado', 'O administrador não liberou seu acesso ao Primárias. Fale com o planejamento.'));
   if (a.estado === 'trocar-senha') return trocarTela(() => novaSenha(a.perfil));
   if (a.estado === 'ok') return abrirApp(a.perfil);
@@ -164,14 +169,30 @@ function esqueciSenha(matriculaDigitada = '') {
 
 /** A primeira conta ficou pendente e o app ainda não tem dono: ela assume. */
 function primeiraConta(perfil) {
+  const nota = el('div', { class: 'acesso-erro', style: { display: 'none' } });
+  const recarregar = el('button', { class: 'btn btn-primary btn-block', type: 'button', style: { display: 'none' }, onclick: () => location.reload() }, 'Recarregar o app');
   const botao = el('button', { class: 'btn btn-primary btn-block', type: 'button', onclick: async () => {
     botao.disabled = true;
     try {
-      await assumirComoDono(perfil);
+      const r = await assumirComoDono(perfil);
       toast('Pronto: você é o dono do app.', 'ok');
-    } catch {
+      // o servidor conta o que viu: regras do banco e se o cadastro tinha chegado lá
+      const avisos = [
+        r.regras === 'antigas' ? 'As regras do banco no Firebase não são as deste app, e algumas telas podem não abrir. Publique as regras do arquivo firestore.rules no Firebase.' : null,
+        r.cadastroNoServidor === false ? 'O seu navegador não tinha conseguido gravar no banco do app. Se o app não abrir, a rede deste computador pode estar bloqueando o Firebase: teste no celular, fora do Wi-Fi da empresa.' : null
+      ].filter(Boolean);
+      if (avisos.length) {
+        nota.textContent = avisos.join(' ');
+        nota.style.display = 'block';
+        botao.style.display = 'none';
+        recarregar.style.display = '';
+      } else {
+        // se o banco do navegador demorar a perceber, recarrega
+        setTimeout(() => ultimo?.estado === 'pendente' && location.reload(), 3500);
+      }
+    } catch (err) {
       botao.disabled = false;
-      toast('Não deu: o app já tem dono ou a internet caiu. Saia e entre de novo.', 'error', 7000);
+      toast(mensagemDeErro(err), 'error', 7000);
     }
   } }, 'Assumir como dono do app');
   mount(app, [el('div', { class: 'acesso' }, [el('div', { class: 'acesso-caixa' }, [
@@ -179,7 +200,9 @@ function primeiraConta(perfil) {
     el('div', { class: 'acesso-cartao' }, [
       el('h3', {}, 'O app ainda não tem dono'),
       el('p', {}, `${perfil.nome}, sua conta é a primeira e ficou aguardando liberação. Assuma como dono: você vira o administrador que ninguém rebaixa, bloqueia ou apaga, e libera as outras pessoas.`),
+      nota,
       botao,
+      recarregar,
       el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => sair() }, 'Sair')
     ])
   ])])]);
