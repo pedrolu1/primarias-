@@ -14,13 +14,11 @@ export const ic = {
   desmontagem: (sz) => s('<path d="M5 3v8M19 3v8M5 8h14"/><path d="M8 14l-3 7M16 14l3 7"/><path d="M3 21h18"/><path d="m10 14 2-2 2 2"/>', sz),
   massa1200: (sz) => s('<path d="M12 3c.5 3 4 5 4 9a4 4 0 0 1-8 0c0-2 1-3 1.5-4.5C10.5 9 12 7 12 3z"/><path d="M12 20.5V22M6.5 19.5l-1 1M17.5 19.5l1 1"/>', sz),
   // navegação e coisas do app
-  chama: (sz) => s('<path d="M12 2.5c1 3.5 5.5 6 5.5 11a5.5 5.5 0 0 1-11 0c0-2.8 1.6-4.3 2.4-6.3.5 1.5 1.4 2.4 2.4 2.8C11.7 7.5 12.3 5 12 2.5z"/>', sz),
   casa: (sz) => s('<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/>', sz),
   mapa: (sz) => s('<rect x="3" y="4" width="7" height="16" rx="1.2"/><rect x="14" y="4" width="7" height="16" rx="1.2"/><path d="M3 9h7M3 14h7M14 9h7M14 14h7"/>', sz),
   prancheta: (sz) => s('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m8.5 11 1.5 1.5 3-3M8.5 16.5 10 18l3-3"/>', sz),
   diario: (sz) => s('<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/>', sz),
   curva: (sz) => s('<path d="M3 20h18"/><path d="M4 18c4 0 5-3 7-7s3-6 9-7"/>', sz),
-  medalha: (sz) => s('<circle cx="12" cy="15" r="5.5"/><path d="M8.5 3h7l-2 6.8M10.5 9.8 8.5 3"/><path d="m12 12.5.9 1.8 2 .3-1.4 1.4.3 2-1.8-1-1.8 1 .3-2-1.4-1.4 2-.3z"/>', sz),
   pedido: (sz) => s('<path d="M4 5h16v11H9l-5 4z"/><path d="M9 10h6"/>', sz),
   som: (sz) => s('<path d="M4 9.5v5h3.5L12 19V5L7.5 9.5z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>', sz),
   semSom: (sz) => s('<path d="M4 9.5v5h3.5L12 19V5L7.5 9.5z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>', sz),

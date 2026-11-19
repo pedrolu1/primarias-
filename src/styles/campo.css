@@ -8,27 +8,14 @@
   border-bottom: 1px solid var(--border-soft);
 }
 .campo-topo .marca { margin-right: auto; }
-.chama-chip {
-  display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 11px 0 8px;
-  border-radius: var(--r-full); background: var(--bg-2); border: 1px solid var(--border);
-  font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--text-2);
+.perfil-botao {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.02em;
+  background: var(--bg-3); border: 1px solid var(--border-strong); color: var(--text-0);
 }
-.chama-chip.acesa { color: var(--brasa-clara); border-color: rgba(255, 138, 31, 0.45); box-shadow: 0 0 20px -6px var(--brasa-glow); }
-.chama-chip.acesa svg { animation: tremular 1.8s ease-in-out infinite; transform-origin: 50% 90%; }
-@keyframes tremular { 0%, 100% { transform: scale(1) rotate(0); } 30% { transform: scale(1.08, 0.95) rotate(-3deg); } 60% { transform: scale(0.96, 1.06) rotate(2deg); } }
-
-.nivel-botao {
-  --f: 0;
-  position: relative; width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer; padding: 0;
-  background: conic-gradient(var(--brasa-clara) calc(var(--f) * 1turn), var(--bg-4) 0);
-  display: flex; align-items: center; justify-content: center;
-}
-.nivel-botao span {
-  width: 34px; height: 34px; border-radius: 50%; background: var(--bg-1);
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-display); font-weight: 700; font-size: 13px; color: var(--text-0);
-}
-.nivel-botao:focus-visible { outline: 2px solid var(--accent-400); outline-offset: 2px; }
+.perfil-botao.ativo { border-color: var(--accent-400); background: color-mix(in srgb, var(--accent-500) 25%, var(--bg-3)); }
+.perfil-botao:focus-visible { outline: 2px solid var(--accent-400); outline-offset: 2px; }
 
 .campo-conteudo { flex: 1; width: 100%; max-width: 600px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 18px; }
 .campo-conteudo.entrando > * { animation: content-in var(--dur-slow) var(--ease-out); }
@@ -238,15 +225,7 @@
 /* ---- Perfil ---- */
 .perfil-topo { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 10px 0 4px; }
 .perfil-topo h2 { font-size: 28px; }
-.graus { font-family: var(--font-display); font-weight: 700; font-size: 64px; line-height: 0.9; background: var(--brasa-grad); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
-.conquistas { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.conquista { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; padding: 12px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--border-soft); }
-.conquista .selo { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--bg-3); color: var(--text-3); }
-.conquista strong { font-size: 14.5px; display: block; line-height: 1.2; }
-.conquista small { font-size: 12px; color: var(--text-2); line-height: 1.3; display: block; margin-top: 2px; }
-.conquista.ganha { border-color: rgba(255, 176, 46, 0.35); }
-.conquista.ganha .selo { background: var(--brasa-grad); color: #2a1600; box-shadow: 0 0 18px -4px var(--brasa-glow); }
-.conquista:not(.ganha) { opacity: 0.6; }
+.avatar-grande { width: 84px; height: 84px; font-size: 30px; }
 
 /* ===================== Tela do forno (líder) ===================== */
 .folha-forno { max-width: 680px; }

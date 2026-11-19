@@ -1,5 +1,5 @@
 // Tudo o que o app mostra sai daqui: estado de cada primária, avanço, Curva S
-// por BM, RDO do dia, checklist com fotos, XP e conquistas. Funções puras
+// por BM, RDO do dia e checklist com fotos. Funções puras
 // sobre o estado do banco.
 import { SEED_BATERIAS, SEED_EPOCH, SEED_VALORES_POR_PRIMARIA } from '../data/seed.js';
 import { SEED_CURVA } from '../data/curva-seed.js';
@@ -7,7 +7,7 @@ import {
   PRIMARIAS, FORNOS, ETAPAS, etapaPorId, contratoAtivo, blocosDa, fornoPorId, primariaPorId,
   MATERIAIS, primariasDoAlvo, BATERIAS, RDO_ULTIMO, noMeio, SLOTS_FOTO, ORDEM_RDO, TITULO_SOPRAGEM, FERIADOS
 } from '../data/obra.js';
-import { somarDias, semana, hoje, diaUtil, diaUtilAnterior, bm, bmDaSemana, semanasDoBm, periodoBm, bmsEntre, inicioDaSemana } from './datas.js';
+import { somarDias, semana, hoje, diaUtil, bm, bmDaSemana, semanasDoBm, periodoBm, bmsEntre, inicioDaSemana } from './datas.js';
 
 const N_ETAPAS = ETAPAS.length;
 const IDX = Object.fromEntries(ETAPAS.map((e, i) => [e.id, i]));
@@ -544,62 +544,16 @@ export function checklists(calc) {
 export const proximoNumeroChecklist = (calc) => Math.max(0, ...Object.values(checklists(calc)).map((c) => c.numero || 0)) + 1;
 
 // ---------------------------------------------------------------------------
-// Pessoas: XP, nível (em °C, até 1200 °C), sequência de dias e conquistas
+// Pessoas: o que cada um lançou (perfil e o lembrete no botão de lançar)
 // ---------------------------------------------------------------------------
-export const XP_POR_PRIMARIA = 10;
-export const XP_FORNO = 100;
-export const XP_BLOCO = 500;
-export const XP_CHECKLIST = 80;
-export const NIVEL_MAX = 12;
-const limiar = (n) => 50 * (n - 1) * n; // XP para chegar ao nível n
-
-export function nivelDoXp(xp) {
-  let n = 1;
-  while (n < NIVEL_MAX && xp >= limiar(n + 1)) n++;
-  const de = limiar(n);
-  const ate = n < NIVEL_MAX ? limiar(n + 1) : de;
-  return { nivel: n, graus: n * 100, de, ate, fracao: n < NIVEL_MAX ? (xp - de) / (ate - de) : 1 };
-}
-
-export function statsPessoa(calc, uid) {
+export function numerosPessoa(calc, uid) {
   const meus = calc.validos.filter((l) => l.autor?.uid === uid);
-  const meusIds = new Set(meus.map((l) => l.id));
-  const etapas = meus.reduce((s, l) => s + l.prims.length, 0);
-  const fornosFechados = FORNOS.filter((f) => meusIds.has(calc.fornos[f.id].fechouLanc));
-  const blocosFechados = new Set();
-  for (const f of fornosFechados) if (calc.blocos[f.bloco].concluidoEm === calc.fornos[f.id].concluidoEm) blocosFechados.add(f.bloco);
-  const checklistsEnviados = Object.values(calc.estado.checklists || {}).filter((c) => c.enviadoPorUid === uid && ['enviado', 'aprovado'].includes(c.status)).length;
-  const xp = etapas * XP_POR_PRIMARIA + fornosFechados.length * XP_FORNO + blocosFechados.size * XP_BLOCO + checklistsEnviados * XP_CHECKLIST;
-  const dias = new Set(meus.map((l) => l.data));
   const hj = hoje();
-  // sequência de dias úteis com lançamento; hoje ainda sem lançamento não quebra
-  let seq = 0;
-  let d = diaUtil(hj) ? hj : diaUtilAnterior(hj);
-  if (!dias.has(d)) d = diaUtilAnterior(d);
-  while (dias.has(d)) {
-    seq++;
-    d = diaUtilAnterior(d);
-  }
-  const hojeEtapas = meus.filter((l) => l.data === hj).reduce((s, l) => s + l.prims.length, 0);
-  const pedidos = calc.estado.correcoes.filter((c) => c.autor?.uid === uid).length;
-  const s = { uid, lancamentos: meus.length, etapas, hojeEtapas, fornos: fornosFechados.length, blocos: blocosFechados.size, checklists: checklistsEnviados, xp, sequencia: seq, dias: dias.size, pedidos, ...nivelDoXp(xp) };
-  s.conquistas = CONQUISTAS.map((c) => ({ ...c, ganha: c.teste(s, calc) }));
-  return s;
+  const soma = (ls) => ls.reduce((s, l) => s + l.prims.length, 0);
+  return { etapas: soma(meus), hojeEtapas: soma(meus.filter((l) => l.data === hj)), dias: new Set(meus.map((l) => l.data)).size };
 }
 
-export const CONQUISTAS = [
-  { id: 'faisca', nome: 'Primeira faísca', desc: 'Fez o primeiro lançamento', teste: (s) => s.lancamentos >= 1 },
-  { id: 'forno', nome: 'Forno fechado', desc: 'Lançou a massa 1200 que fechou um forno', teste: (s) => s.fornos >= 1 },
-  { id: 'fotografo', nome: 'Checklist na mão', desc: 'Enviou as 8 fotos de um forno', teste: (s) => s.checklists >= 1 },
-  { id: 'dez-fornos', nome: 'Dez fornos', desc: 'Fechou 10 fornos', teste: (s) => s.fornos >= 10 },
-  { id: 'bloco', nome: 'Bloco fechado', desc: 'Fechou o último forno de um bloco', teste: (s) => s.blocos >= 1 },
-  { id: 'sequencia', nome: 'Cinco seguidos', desc: '5 dias úteis seguidos lançando', teste: (s) => s.sequencia >= 5 },
-  { id: 'cem', nome: 'Cem etapas', desc: '100 etapas de primária lançadas', teste: (s) => s.etapas >= 100 },
-  { id: 'mao-firme', nome: 'Mão firme', desc: '20 lançamentos sem pedir correção', teste: (s) => s.lancamentos >= 20 && s.pedidos === 0 },
-  { id: 'brasa', nome: '1200 °C', desc: 'Chegou ao nível máximo', teste: (s) => s.nivel >= NIVEL_MAX }
-];
-
-/** O que um lançamento novo provocou: fornos e blocos fechados (para comemorar). */
+/** O que um lançamento novo provocou: fornos e blocos fechados (para avisar o líder). */
 export function efeitosDoLancamento(antes, depois, lanc) {
   const fornos = [...new Set(lanc.prims.map((id) => primariaPorId[id].fornoId))].filter((fid) => !antes.fornos[fid].concluidoEm && depois.fornos[fid].concluidoEm);
   const blocos = [...new Set(fornos.map((fid) => fornoPorId[fid].bloco))].filter((bl) => !antes.blocos[bl].concluidoEm && depois.blocos[bl].concluidoEm);

@@ -1,9 +1,8 @@
-// Perfil: a temperatura (nível) da pessoa, os números dela e as conquistas.
+// Perfil: quem está usando o app, o que lançou e as opções da conta.
 import { el } from '../../base/dom.js';
 import { CREDITO } from '../../base/ui.js';
-import { anel } from '../../components/base.js';
+import { initials } from '../../base/format.js';
 import { ic } from '../../lib/icones.js';
-import { NIVEL_MAX, XP_POR_PRIMARIA, XP_FORNO, XP_BLOCO } from '../../lib/calculo.js';
 import { somLigado, alternarSom, tocar } from '../../lib/efeitos.js';
 import { PAPEIS } from '../../data/obra.js';
 import { abrirTrocarSenha } from '../../components/trocarSenha.js';
@@ -12,22 +11,14 @@ export function paginaPerfil({ perfil, stats, trocarVisao, redesenhar }) {
   const som = somLigado();
   return [
     el('div', { class: 'perfil-topo' }, [
-      anel({ fracao: stats.fracao, tamanho: 168, espessura: 14, chave: 'perfil-nivel', centro: [el('span', { class: 'graus' }, `${stats.graus}°`), el('small', {}, stats.nivel >= NIVEL_MAX ? 'máximo' : `${stats.xp} / ${stats.ate} XP`)] }),
+      el('span', { class: 'avatar avatar-grande' }, initials(perfil.nome)),
       el('h2', {}, perfil.nome),
-      el('span', { class: 'fraco' }, `${PAPEIS[perfil.papel].nome} · ${stats.xp} XP no total`)
+      el('span', { class: 'fraco' }, `${PAPEIS[perfil.papel].nome} · matrícula ${perfil.matricula}`)
     ]),
     el('div', { class: 'dia-numeros' }, [
-      el('div', {}, [el('span', { class: 'num' }, String(stats.etapas)), el('small', {}, 'etapas lançadas')]),
-      el('div', {}, [el('span', { class: 'num' }, String(stats.fornos)), el('small', {}, 'fornos fechados')]),
-      el('div', {}, [el('span', { class: 'num' }, String(stats.sequencia)), el('small', {}, 'dias seguidos')])
-    ]),
-    el('section', { class: 'pilha' }, [
-      el('div', { class: 'titulo-secao' }, ['Conquistas', el('small', {}, `${stats.conquistas.filter((c) => c.ganha).length} de ${stats.conquistas.length}`)]),
-      el('div', { class: 'conquistas' }, stats.conquistas.map((c) => el('div', { class: `conquista${c.ganha ? ' ganha' : ''}` }, [el('span', { class: 'selo', html: c.ganha ? ic.medalha(22) : ic.lock(18) }), el('div', {}, [el('strong', {}, c.nome), el('small', {}, c.desc)])])))
-    ]),
-    el('section', { class: 'card card-pad pilha', style: { gap: '8px' } }, [
-      el('strong', {}, 'Como esquentar'),
-      el('p', { class: 'fraco', style: { fontSize: '13.5px', lineHeight: '1.55' } }, `Cada primária lançada numa etapa vale ${XP_POR_PRIMARIA} XP. Fechar um forno (a última massa 1200) vale mais ${XP_FORNO}, e fechar um bloco, mais ${XP_BLOCO}. A cada nível a temperatura sobe 100 °C, até 1200 °C. Lançar todo dia útil mantém a chama acesa.`)
+      el('div', {}, [el('span', { class: 'num' }, String(stats.hojeEtapas)), el('small', {}, 'etapas hoje')]),
+      el('div', {}, [el('span', { class: 'num' }, String(stats.etapas)), el('small', {}, 'etapas no total')]),
+      el('div', {}, [el('span', { class: 'num' }, String(stats.dias)), el('small', {}, stats.dias === 1 ? 'dia com lançamento' : 'dias com lançamento')])
     ]),
     el('div', { class: 'menu-list' }, [
       el('button', { class: 'menu-item', type: 'button', onclick: () => { alternarSom(!som); if (!som) tocar('ok'); redesenhar(); } }, [

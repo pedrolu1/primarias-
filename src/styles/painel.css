@@ -163,7 +163,7 @@ table.data-table.tabela-estreita { min-width: 0; }
 @media print {
   body { background: #fff; }
   body::before, body::after { display: none; }
-  .desktop-sidebar, .desktop-topbar, .nao-imprimir, .demo-pilula, canvas.faiscas { display: none !important; }
+  .desktop-sidebar, .desktop-topbar, .nao-imprimir, .demo-pilula { display: none !important; }
   .desktop-content { padding: 0; }
   :root { color-scheme: light; }
   html, body, .desktop-shell, .desktop-main, .desktop-content { background: #fff !important; }

@@ -20,8 +20,7 @@ export function paginaHoje({ calc, perfil, stats, lancar, ir, redesenhar }) {
   const hj = hoje();
   const equipeHoje = calc.validos.filter((l) => l.data === hj).reduce((s, l) => s + l.prims.length, 0);
 
-  // a temperatura e a sequência já ficam no topo da tela; aqui só o que
-  // ajuda a decidir o próximo lançamento, para a frente de serviço subir
+  // um cartão curto, para a frente de serviço caber na primeira tela
   const hero = el('section', { class: 'semana-hero' }, [
     anel({ fracao: sem.meta ? sem.fechados / sem.meta : 0, tamanho: 84, espessura: 9, chave: 'semana', centro: [el('span', { class: 'num' }, String(sem.fechados)), el('small', {}, `de ${sem.meta}`)] }),
     el('div', {}, [

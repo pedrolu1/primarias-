@@ -4,7 +4,8 @@
 import { el, mount } from '../../base/dom.js';
 import { ic } from '../../lib/icones.js';
 import { assinar } from '../../lib/banco.js';
-import { calcular, statsPessoa, checklists } from '../../lib/calculo.js';
+import { calcular, numerosPessoa, checklists } from '../../lib/calculo.js';
+import { initials } from '../../base/format.js';
 import { abrirLancamento, mostrarBlocoAtivo } from '../../components/lancar.js';
 import { chipSinc } from '../../components/sinc.js';
 import { paginaHoje } from './Hoje.js';
@@ -25,8 +26,7 @@ export function montarCampo(root, { perfil, menuDemo, trocarVisao }) {
   const conteudo = el('main', { class: 'campo-conteudo entrando' });
   setTimeout(() => conteudo.classList.remove('entrando'), 600);
   const sinc = chipSinc();
-  const chama = el('span', { class: 'chama-chip', title: 'Dias úteis seguidos lançando' });
-  const nivelBotao = el('button', { class: 'nivel-botao', type: 'button', 'aria-label': 'Meu perfil', onclick: () => ir('perfil') }, el('span'));
+  const perfilBotao = el('button', { class: 'perfil-botao', type: 'button', 'aria-label': 'Meu perfil', title: perfil.nome, onclick: () => ir('perfil') }, initials(perfil.nome));
   const navItens = {
     hoje: navItem('hoje', ic.casa(22), 'Hoje'),
     mapa: navItem('mapa', ic.mapa(22), 'Mapa'),
@@ -41,8 +41,7 @@ export function montarCampo(root, { perfil, menuDemo, trocarVisao }) {
         el('div', { class: 'marca marca-sm' }, 'Primárias'),
         menuDemo ? el('button', { class: 'demo-pilula', type: 'button', onclick: menuDemo }, [el('span', { class: 'vivo' }), 'Demo']) : null,
         sinc.no,
-        chama,
-        nivelBotao
+        perfilBotao
       ]),
       conteudo,
       el('nav', { class: 'campo-nav', 'aria-label': 'Navegação' }, [navItens.hoje, navItens.mapa, fab, navItens.fotos, navItens.diario])
@@ -85,12 +84,8 @@ export function montarCampo(root, { perfil, menuDemo, trocarVisao }) {
 
   function desenhar() {
     pendente = false;
-    const s = statsPessoa(calc, perfil.uid);
-    chama.className = `chama-chip${s.sequencia > 0 ? ' acesa' : ''}`;
-    chama.replaceChildren(el('span', { html: ic.chama(18), style: { display: 'inline-flex' } }), String(s.sequencia));
-    nivelBotao.style.setProperty('--f', String(s.fracao));
-    nivelBotao.firstChild.textContent = `${s.graus}°`;
-    nivelBotao.title = `${s.graus} °C · ${s.xp} XP`;
+    const s = numerosPessoa(calc, perfil.uid);
+    perfilBotao.classList.toggle('ativo', rota === 'perfil');
     Object.entries(navItens).forEach(([id, b]) => b.classList.toggle('ativo', id === rota));
     // fotos que esperam o líder: devolvidas e fornos concluídos sem checklist enviado
     const ck = checklists(calc);

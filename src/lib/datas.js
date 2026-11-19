@@ -18,13 +18,6 @@ export function somarDias(s, n) {
 export const diaDaSemana = (s) => paraData(s).getDay(); // 0 = domingo
 export const diaUtil = (s) => ![0, 6].includes(diaDaSemana(s));
 
-/** Último dia útil antes de `s` (para a sequência de dias não quebrar no fim de semana). */
-export function diaUtilAnterior(s) {
-  let d = somarDias(s, -1);
-  while (!diaUtil(d)) d = somarDias(d, -1);
-  return d;
-}
-
 /** Semana ISO no formato da planilha: "S-44". */
 export function semana(s) {
   const d = paraData(s);

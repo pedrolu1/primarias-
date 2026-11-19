@@ -1,15 +1,15 @@
 // Fluxo de lançamento: etapa → onde → confirmar. Pensado para o celular, com
-// botões grandes, o caminho mais curto já selecionado e a comemoração no fim.
+// botões grandes, o caminho mais curto já selecionado e o aviso de forno fechado no fim.
 // Vindo do botão de um forno (etapa e forno já sabidos), abre direto na
 // confirmação, com as primárias para ajustar ali mesmo.
 import { el } from '../base/dom.js';
 import { abrirFolha, seis, etiquetaEtapa } from './base.js';
 import { ic, iconeEtapa } from '../lib/icones.js';
 import { ETAPAS, etapaPorId, FORNOS, blocosDa, contratoAtivo, fornoPorId, primariaPorId, primariasDoAlvo, NIVEL_NOME, noMeio } from '../data/obra.js';
-import { calcular, alvosDoForno, resumoAlvos, statsPessoa, efeitosDoLancamento, XP_POR_PRIMARIA, XP_FORNO, XP_BLOCO } from '../lib/calculo.js';
+import { calcular, alvosDoForno, resumoAlvos, efeitosDoLancamento } from '../lib/calculo.js';
 import { estadoAtual, lancar } from '../lib/banco.js';
 import { hoje, somarDias, completa } from '../lib/datas.js';
-import { faiscas, vibrar, tocar, xpFlutuante, comemorar, anunciarConquista } from '../lib/efeitos.js';
+import { vibrar, tocar, comemorar } from '../lib/efeitos.js';
 import { autorDe } from '../lib/acesso.js';
 
 const liberadosNoForno = (calc, etapaId, fid) => alvosDoForno(calc, etapaId, fid).filter((a) => a.ok);
@@ -185,7 +185,6 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
     const prims = [...new Set(alvos.flatMap(primariasDoAlvo))];
     const n = prims.length;
     const fornos = [...st.sel.values()].filter((s) => s.size).length;
-    const xp = n * XP_POR_PRIMARIA;
     const umForno = st.sel.size === 1 ? [...st.sel.keys()][0] : null;
     const botao = el('button', { type: 'button', class: 'btn btn-brasa', disabled: !n, onclick: () => confirmar(botao) }, n ? [el('span', { html: iconeEtapa(e.id, 22) }), `Lançar ${noMeio(e)}`] : 'Marque o que foi feito');
     const dia = (rotuloDia, data) => el('button', {
@@ -199,7 +198,7 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
       corpo: [
         el('div', { class: 'entre' }, [passos(), el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: voltarParaOnde }, umForno ? 'Outro forno' : 'Voltar')]),
         el('div', { class: `resumo-lanc cor-${e.id}` }, [
-          el('div', { class: 'entre' }, [etiquetaEtapa(e), el('span', { class: 'fraco', style: { fontSize: '13px' } }, `+${xp} XP`)]),
+          etiquetaEtapa(e),
           el('div', {}, [el('span', { class: 'contagem' }, String(n)), el('span', { class: 'fraco' }, ` primária${n === 1 ? '' : 's'} em ${fornos} forno${fornos === 1 ? '' : 's'}`)]),
           umForno ? null : el('ul', {}, resumoAlvos(prims, e.id).map((l) => el('li', {}, [el('span', { class: 'ponto' }), l])))
         ]),
@@ -225,35 +224,28 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
   function confirmar(botao) {
     botao.disabled = true;
     const antes = calcular(estadoAtual());
-    const statsAntes = statsPessoa(antes, perfil.uid);
     const lanc = lancar({ etapa: st.etapa, alvos: alvosEscolhidos(), data: st.data, obs: st.obs, autor: autorDe(perfil) });
     // o banco online só avisa a mudança um instante depois: calcula já com o
-    // lançamento novo, para a comemoração (forno, bloco, nível) sair na hora
+    // lançamento novo, para o aviso de forno fechado sair na hora
     const lancamentos = antes.estado.lancamentos.some((l) => l.id === lanc.id) ? antes.estado.lancamentos : [...antes.estado.lancamentos, lanc];
     const depois = calcular({ ...antes.estado, versao: `${antes.estado.versao}+${lanc.id}`, lancamentos });
-    const statsDepois = statsPessoa(depois, perfil.uid);
     const ef = efeitosDoLancamento(antes, depois, lanc);
     const e = etapaPorId[st.etapa];
 
     vibrar([18, 30, 26]);
     tocar('ok');
     aoLancar?.(lanc);
-    faiscas(botao, { quantidade: 40 });
-    xpFlutuante(botao, `+${lanc.prims.length * XP_POR_PRIMARIA + ef.fornos.length * XP_FORNO + ef.blocos.length * XP_BLOCO} XP`);
     setTimeout(() => {
       folha.fechar();
-      if (ef.blocos.length) comemorar({ titulo: `Bloco ${ef.blocos.join(', ')} aceso!`, texto: 'Os 18 fornos do bloco estão concluídos.', grande: true });
-      else if (ef.fornos.length) comemorar({ titulo: ef.fornos.length > 1 ? `${ef.fornos.length} fornos fechados!` : `Forno ${ef.fornos[0].replace('-', ' ')} fechado!`, texto: 'As 6 primárias com massa 1200. Checklist de entrega liberado.' });
-      if (statsDepois.nivel > statsAntes.nivel) setTimeout(() => comemorar({ titulo: `Você chegou a ${statsDepois.graus} °C`, texto: statsDepois.nivel >= 12 ? 'Temperatura máxima. Brasa viva.' : `Próximo: ${statsDepois.graus + 100} °C`, icone: ic.chama(54), som: 'nivel' }), ef.fornos.length ? 2700 : 0);
-      const novas = statsDepois.conquistas.filter((c, i) => c.ganha && !statsAntes.conquistas[i].ganha);
-      novas.forEach((c, i) => setTimeout(() => anunciarConquista(c), 600 + i * 3300 + (ef.fornos.length ? 2600 : 0)));
-      if (!ef.fornos.length && statsDepois.nivel === statsAntes.nivel) comemorarSimples(e, lanc.prims.length);
-    }, 520);
+      if (ef.blocos.length) comemorar({ titulo: `Bloco ${ef.blocos.join(', ')} concluído`, texto: 'Os 18 fornos do bloco estão com massa 1200.', grande: true });
+      else if (ef.fornos.length) comemorar({ titulo: ef.fornos.length > 1 ? `${ef.fornos.length} fornos fechados` : `Forno ${ef.fornos[0].replace('-', ' ')} fechado`, texto: 'As 6 primárias com massa 1200. Já pode tirar as fotos do checklist.' });
+      else avisoLancado(e, lanc.prims.length);
+    }, 300);
   }
 
-  function comemorarSimples(e, n) {
-    const aviso = el('div', { class: 'conquista-aviso lancado-aviso', role: 'status' }, [
-      el('span', { class: `conquista-selo`, style: { background: e.cor, color: '#fff' }, html: ic.check(22) }),
+  function avisoLancado(e, n) {
+    const aviso = el('div', { class: 'lancado-aviso', role: 'status' }, [
+      el('span', { class: 'lancado-selo', style: { background: e.cor }, html: ic.check(22) }),
       el('div', {}, [el('small', { style: { color: 'var(--text-1)' } }, `${e.curto} lançada`), el('strong', {}, `${n} primária${n > 1 ? 's' : ''} no mapa`)])
     ]);
     document.body.appendChild(aviso);

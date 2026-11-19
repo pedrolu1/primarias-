@@ -41,7 +41,7 @@ export function abrirFolha({ titulo, subtitulo = '', corpo, pe = null, aoFechar 
   return { fechar, montar, caixa };
 }
 
-/** Anel de progresso com o gradiente da brasa. Com `chave`, anima a partir do último valor mostrado. */
+/** Anel de progresso no azul da marca. Com `chave`, anima a partir do último valor mostrado. */
 const ultimosAneis = new Map();
 export function anel({ fracao, tamanho = 132, espessura = 12, centro, chave = null }) {
   const de = chave && ultimosAneis.has(chave) ? ultimosAneis.get(chave) : 0;
@@ -51,10 +51,9 @@ export function anel({ fracao, tamanho = 132, espessura = 12, centro, chave = nu
   const arco = svg('circle', { class: 'arco', cx: tamanho / 2, cy: tamanho / 2, r, fill: 'none', 'stroke-width': espessura, 'stroke-linecap': 'round', 'stroke-dasharray': circ, 'stroke-dashoffset': circ * (1 - Math.max(0, Math.min(1, de))) });
   const no = el('div', { class: 'anel', style: { width: `${tamanho}px`, height: `${tamanho}px` } }, [
     svg('svg', { width: tamanho, height: tamanho, viewBox: `0 0 ${tamanho} ${tamanho}` }, [
-      svg('defs', {}, svg('linearGradient', { id: 'grad-brasa', x1: '0', y1: '0', x2: '1', y2: '1' }, [
-        svg('stop', { offset: '0%', 'stop-color': '#ff5a14' }),
-        svg('stop', { offset: '60%', 'stop-color': '#ff8a1f' }),
-        svg('stop', { offset: '100%', 'stop-color': '#ffb02e' })
+      svg('defs', {}, svg('linearGradient', { id: 'grad-anel', x1: '0', y1: '0', x2: '1', y2: '1' }, [
+        svg('stop', { offset: '0%', 'stop-color': '#2f62d6' }),
+        svg('stop', { offset: '100%', 'stop-color': '#7aa2ff' })
       ])),
       svg('circle', { class: 'trilho', cx: tamanho / 2, cy: tamanho / 2, r, fill: 'none', 'stroke-width': espessura }),
       arco

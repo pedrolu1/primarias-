@@ -2,7 +2,7 @@
    (botões, lançar, confirmar) e da marca; o fundo é um azul-marinho bem
    escuro, da mesma família. As cores das etapas são outra coisa: identificam
    a etapa no mapa e nos gráficos e foram validadas para daltonismo neste fundo.
-   O âmbar fica para as recompensas (sequência de dias, nível em °C). */
+   O âmbar marca o modo demonstração e a primária que acabou de mudar. */
 :root {
   --bg-0: #0c111d;
   --bg-1: #111829;
@@ -27,10 +27,8 @@
   --accent-glow: rgba(47, 98, 214, 0.4);
   --accent-grad: linear-gradient(135deg, #1c4497 0%, #2a5bcc 55%, #3d74ef 100%);
 
-  /* recompensa (sequência, nível, conquista) */
+  /* âmbar: modo demonstração e primária que acabou de mudar no mapa */
   --brasa-clara: #ffb02e;
-  --brasa-glow: rgba(255, 159, 28, 0.38);
-  --brasa-grad: linear-gradient(135deg, #ff7a1a 0%, #ffb02e 100%);
 
   /* etapas, na ordem do serviço */
   --e-andaime: #3987e5;

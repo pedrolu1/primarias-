@@ -11,7 +11,7 @@ import { assinar, assinarFotos, salvarFoto, enviarChecklist, devolverChecklist, 
 import { comprimirFoto } from '../lib/fotos.js';
 import { completa } from '../lib/datas.js';
 import { autorDe } from '../lib/acesso.js';
-import { vibrar, tocar, faiscas, comemorar } from '../lib/efeitos.js';
+import { vibrar, tocar, comemorar } from '../lib/efeitos.js';
 import { toast } from '../base/toast.js';
 
 export const NOME_STATUS = { pendente: 'Sem fotos', rascunho: 'Em andamento', enviado: 'Enviado para aprovação', devolvido: 'Devolvido para ajuste', aprovado: 'Aprovado' };
@@ -63,11 +63,8 @@ export function abrirChecklistFotos(fid, { perfil, modo = 'campo' }) {
     if (modo === 'campo' && !travado) {
       acoes.push(el('button', {
         type: 'button', class: 'btn btn-brasa', disabled: n < SLOTS_FOTO.length,
-        onclick: (ev) => {
+        onclick: () => {
           enviarChecklist(fid, autorDe(perfil));
-          tocar('forno');
-          vibrar([20, 40, 30]);
-          faiscas(ev.currentTarget, { quantidade: 46 });
           folha.fechar();
           comemorar({ titulo: 'Checklist enviado!', texto: `${rotulo(fid)} com as 8 fotos. O planejador aprova no painel.`, icone: ic.prancheta(48), som: 'ok' });
         }
@@ -90,7 +87,6 @@ export function abrirChecklistFotos(fid, { perfil, modo = 'campo' }) {
           try {
             const numero = await aprovarChecklist(fid, perfil.nome, proximoNumeroChecklist(calc) - 1);
             tocar('forno');
-            faiscas(botao, { quantidade: 50 });
             toast(`Checklist nº ${numero} aprovado.`, 'ok');
           } catch {
             botao.disabled = false;
