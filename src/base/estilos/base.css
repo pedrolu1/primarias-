@@ -28,7 +28,7 @@ body {
   position: relative;
 }
 
-/* textura sutil de ruído — evita a chapada plana típica de UI gerada por IA */
+/* textura sutil de ruído, evita a chapada plana típica de UI gerada por IA */
 body::before {
   content: '';
   position: fixed;
@@ -40,7 +40,7 @@ body::before {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* glow radial ancorado no topo — profundidade sem gradiente óbvio de "AI slop" */
+/* glow radial ancorado no topo, profundidade sem gradiente óbvio de "AI slop" */
 body::after {
   content: '';
   position: fixed;
@@ -103,10 +103,6 @@ input, select, textarea {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-3);
-}
-
-.mono {
-  font-family: var(--font-mono);
 }
 
 .boot-splash {

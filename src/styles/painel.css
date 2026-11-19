@@ -50,15 +50,11 @@
 .grafico .grade { stroke: var(--chart-grid); stroke-width: 1; }
 .grafico .eixo { fill: var(--text-2); font-size: 11.5px; font-family: var(--font-body); }
 .grafico .rotulo { fill: var(--text-0); font-size: 12.5px; font-weight: 700; font-family: var(--font-display); }
-.grafico .hoje-linha { stroke: var(--accent-400); stroke-dasharray: 3 4; stroke-width: 1.2; }
-.grafico .hoje-txt { fill: var(--accent-300); font-size: 11px; font-weight: 700; }
 .grafico .alvo { fill: transparent; cursor: crosshair; }
 .grafico .semana-atual { fill: color-mix(in srgb, var(--accent-500) 13%, transparent); stroke: var(--accent-300); stroke-width: 2; }
-.grafico .semana-atual-txt { fill: var(--accent-300); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; font-family: var(--font-body); }
 .grafico .eixo.forte { fill: var(--text-0); font-weight: 700; }
 .grafico .eixo.fino { fill: var(--text-3); font-size: 10.5px; }
 .grafico .rotulo.fraco { fill: var(--text-2); font-weight: 600; }
-.grafico .mira { stroke: var(--border-strong); stroke-width: 1; }
 .legenda-grafico { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--text-1); }
 .legenda-grafico span { display: inline-flex; align-items: center; gap: 7px; }
 .legenda-grafico i { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
@@ -129,7 +125,6 @@ table.data-table.tabela-estreita { min-width: 0; }
 .rdo-folha .f-ass-cab { font-weight: 700; font-size: 11px; text-align: center; border-bottom: none; }
 .rdo-folha .f-ass { height: 90px; border-top: none; }
 .rdo-folha .f-linha-obs { height: 44px; white-space: pre-wrap; text-align: center; font-size: 10px; }
-.rdo-cartao-folha { display: flex; flex-direction: column; gap: 10px; }
 .rdo-aviso-num { font-size: 13px; color: var(--text-2); }
 .rdo-edicao { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 
@@ -231,8 +226,6 @@ table.data-table.tabela-estreita { min-width: 0; }
 .doc-excel-info strong { display: block; font-size: 14px; }
 .doc-excel-info small { display: block; font-size: 12.5px; color: var(--text-2); word-break: break-word; }
 .doc-excel-icone { width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: rgba(31, 154, 58, 0.18); color: #7fe39a; }
-.doc-opcao { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text-1); cursor: pointer; }
-.doc-opcao input { margin-top: 2px; accent-color: var(--accent-400); }
 .doc-lista { display: flex; flex-direction: column; max-height: 300px; overflow: auto; border: 1px solid var(--border-soft); border-radius: var(--r-lg); }
 .doc-linha { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--border-soft); font-size: 13.5px; }
 .doc-linha:last-child { border-bottom: none; }

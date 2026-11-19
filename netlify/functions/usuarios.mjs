@@ -127,4 +127,4 @@ export default async (req) => {
   return resposta(400, { erro: 'acao' });
 };
 
-export const config = { path: ['/api/usuarios', '/api/senha'] };
+export const config = { path: '/api/usuarios' };

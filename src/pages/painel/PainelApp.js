@@ -9,6 +9,7 @@ import { calcular, checklists } from '../../lib/calculo.js';
 import { PAPEIS } from '../../data/obra.js';
 import { chipSinc } from '../../components/sinc.js';
 import { chipPasta } from '../../components/pastaCartao.js';
+import { abrirTrocarSenha } from '../../components/trocarSenha.js';
 import { iniciarPasta, aoMudarPasta } from '../../lib/pasta.js';
 import { paginaVisao } from './Visao.js';
 import { paginaMapa } from './Mapa.js';
@@ -33,7 +34,7 @@ const TODAS = [
   { id: 'aprovacoes', nome: 'Correções', icone: ic.pedido(18), sub: 'Pedidos de correção do campo', pagina: paginaAprovacoes, gestao: true },
   { id: 'desvios', nome: 'Desvios', icone: ic.alert(18), sub: 'Motivos de baixa aderência', pagina: paginaDesvios },
   { id: 'usuarios', nome: 'Usuários', icone: ic.usuarios(18), sub: 'Quem entra no app e com qual papel', pagina: paginaUsuarios, admin: true },
-  { id: 'config', nome: 'Configuração', icone: ic.engrenagem(18), sub: 'Meta do BM, numeração do RDO, pesos e base da planilha', pagina: paginaConfig, gestao: true }
+  { id: 'config', nome: 'Configuração', icone: ic.engrenagem(18), sub: 'Numeração do RDO, peso das etapas e base da planilha', pagina: paginaConfig, gestao: true }
 ];
 
 export function montarPainel(root, { perfil, menuDemo, trocarVisao }) {
@@ -80,6 +81,7 @@ export function montarPainel(root, { perfil, menuDemo, trocarVisao }) {
       el('div', { class: 'sidebar-footer' }, [
         el('div', { class: 'sidebar-user', title: perfil.nome }, [el('span', { class: 'avatar' }, initials(perfil.nome)), el('div', { class: 'sidebar-label' }, [el('div', { class: 'sidebar-user-name' }, perfil.nome), el('div', { class: 'sidebar-user-role' }, PAPEIS[perfil.papel].nome)])]),
         trocarVisao ? el('button', { class: 'btn btn-outline btn-sm btn-block', title: 'Ver o app como o campo vê', type: 'button', onclick: () => trocarVisao('campo') }, [el('span', { class: 'sidebar-icon', html: ic.clock(15) }), el('span', { class: 'sidebar-label' }, 'Ver app de campo')]) : null,
+        el('button', { class: 'btn btn-ghost btn-sm btn-block', title: 'Trocar minha senha', type: 'button', onclick: abrirTrocarSenha }, [el('span', { class: 'sidebar-icon', html: ic.key(15) }), el('span', { class: 'sidebar-label' }, 'Trocar senha')]),
         el('button', { class: 'btn btn-ghost btn-sm btn-block', title: 'Sair', type: 'button', onclick: () => window.dispatchEvent(new CustomEvent('prim:sair')) }, [el('span', { class: 'sidebar-icon', html: ic.logout(15) }), el('span', { class: 'sidebar-label' }, 'Sair')]),
         credito('credito-sidebar')
       ])

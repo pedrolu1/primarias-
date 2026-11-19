@@ -89,7 +89,7 @@ function svgBms(lista, W, altura) {
       onmousemove: (e) => mostrarDica(e, `BM ${b.rotulo} · ${curta(b.inicio)} a ${curta(b.fim)}`, [
         ['Previsto', `${b.meta} fornos`, 'var(--bg-4)'],
         ['Revestidos', `${b.realizado} fornos`, 'var(--accent-500)'],
-        ['Aderência', b.meta ? pct(b.realizado / b.meta) : '—']
+        ['Aderência', b.meta ? pct(b.realizado / b.meta) : '-']
       ]),
       onmouseleave: esconderDica
     }));

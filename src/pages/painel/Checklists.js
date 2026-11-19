@@ -59,7 +59,7 @@ export function paginaChecklists({ calc, perfil, leitura }) {
           const c = mapa[f.id] || { status: 'pendente' };
           return el('tr', {}, [
             el('td', { class: 'n' }, String(i + 1)),
-            el('td', { class: 'n strong' }, c.numero ? String(c.numero) : '—'),
+            el('td', { class: 'n strong' }, c.numero ? String(c.numero) : '-'),
             el('td', {}, localMedicao(f.id)),
             el('td', {}, completa(f.concluidoEm)),
             el('td', {}, statusChip(c.status, c.origem === 'planilha' ? 'Aprovado (planilha)' : NOME_STATUS[c.status])),

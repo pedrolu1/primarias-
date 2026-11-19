@@ -150,10 +150,11 @@ export function abrirChecklistFotos(fid, { perfil, modo = 'campo' }) {
   }
 
   function trocar(s) {
-    const entrada = el('input', { type: 'file', accept: 'image/*', capture: 'environment', class: 'foto-entrada', onchange: (ev) => tirar(s, ev.target.files[0]) });
+    // a câmera pode demorar: o campo some depois que a foto chega (ou em 10 min)
+    const entrada = el('input', { type: 'file', accept: 'image/*', capture: 'environment', class: 'foto-entrada', onchange: (ev) => { tirar(s, ev.target.files[0]); entrada.remove(); } });
     document.body.appendChild(entrada);
     entrada.click();
-    setTimeout(() => entrada.remove(), 60000);
+    setTimeout(() => entrada.remove(), 10 * 60 * 1000);
   }
   return folha;
 }

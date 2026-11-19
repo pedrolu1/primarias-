@@ -30,13 +30,11 @@ function mudar(parcial) {
 // gravação em si não espera o servidor, para funcionar sem internet.
 function semEsperar(promessa, oQue) {
   promessa.catch((err) => {
-    // eslint-disable-next-line no-console
     console.error(`[Firestore] ${oQue}`, err);
     toast(err?.code === 'permission-denied' ? `Sem permissão para ${oQue}.` : `Não foi possível salvar ${oQue}. Confira a internet.`, 'error', 6000);
   });
 }
 const erroLeitura = (oQue) => (err) => {
-  // eslint-disable-next-line no-console
   console.error(`[Firestore] ${oQue}`, err);
   if (err?.code === 'permission-denied') toast(`Sem permissão para ver ${oQue}. As regras do Firestore do Primárias foram publicadas?`, 'error', 8000);
 };

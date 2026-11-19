@@ -49,9 +49,6 @@ npm run demo     # modo demonstração, dados só no navegador
 npm run build    # gera dist/
 ```
 
-Para apontar para outro projeto Firebase sem mexer no código, copie
-`.env.example` para `.env` e preencha as chaves.
-
 ## Colocar no ar pela primeira vez
 
 1. **Firebase** (console.firebase.google.com, com a conta Google da empresa):
@@ -66,26 +63,28 @@ Para apontar para outro projeto Firebase sem mexer no código, copie
      `firestore.rules` e Publicar.
 2. **Publicar:** o site `reframax-primarias` da Netlify está ligado a este
    repositório (Site configuration → Build & deploy → Repository): cada push na
-   `main` publica sozinho, com o build do `netlify.toml`. O GitHub Actions só
-   confere se o app compila.
+   `main` publica sozinho, com o build do `netlify.toml`. Se o build falhar, a
+   versão anterior continua no ar.
 3. **Primeira conta:** abra o app e toque em "Criar conta". Essa conta vira o
    dono do app; as próximas aparecem para ele liberar na tela Usuários.
-4. **Senha provisória (opcional):** Firebase → Configurações do projeto → Contas
+4. **Senha e exclusão de contas:** Firebase → Configurações do projeto → Contas
    de serviço → Gerar nova chave privada. Na Netlify, site `reframax-primarias`
    → Site configuration → Environment variables → `FIREBASE_SERVICE_ACCOUNT`
-   com o conteúdo do arquivo `.json`.
+   com o conteúdo do arquivo `.json`, e publicar de novo (Deploys → Trigger
+   deploy).
 
 ## Organização
 
-- `src/`: o app. `src/base/` tem os componentes de interface (botões, campos,
-  modais, layout) que vieram do Tempos & Métodos.
-- `firestore.rules`: regras do banco (colar no console a cada mudança, ou
-  `firebase deploy --only firestore:rules`).
+- `src/`: o app. `src/lib/` tem a lógica (cálculo, banco, acesso, planilhas,
+  pasta), `src/pages/` as telas do campo e do painel, `src/components/` as partes
+  repetidas e `src/base/` o básico de interface e estilos.
+- `firestore.rules`: regras do banco (colar no console do Firebase a cada
+  mudança: Firestore Database → Regras → Publicar).
 - `netlify/functions/usuarios.mjs` (`/api/usuarios`): senha provisória, exclusão
   da conta de login, bloqueio do login e o "esqueci a senha" da tela de entrada.
   Precisa da chave da conta de serviço em `FIREBASE_SERVICE_ACCOUNT` na Netlify.
-- `scripts/`: ícones (`npm run icones`) e a base histórica tirada da planilha.
-- `rotina/`: rotina diária no computador do planejador (WhatsApp → planilhas).
+- `scripts/`: ícones (`npm run icones`) e a geração da base histórica e da
+  Curva S que vão junto com o app, tiradas das planilhas.
 
 ## Base histórica (antes do app)
 
@@ -96,10 +95,3 @@ Configuração ("Atualizar pela Gestão Visual"), ou, no código:
 ```bash
 python3 scripts/gerar-seed.py "Gestão Visual - Compilado.xlsx" src/data/seed.js
 ```
-
-## Rotina diária (WhatsApp → planilhas)
-
-`rotina/` tem o que roda no computador do planejador: o Claude lê o grupo das
-primárias no WhatsApp Web, mostra o avanço para conferir e roda
-`preencher-primarias.ps1`, que preenche o RDO, a Curva S e a Gestão Visual pelo
-próprio Excel. Instruções em `rotina/SKILL.md`; instalação em `rotina/LEIA-ME.md`.

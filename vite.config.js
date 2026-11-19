@@ -1,18 +1,8 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Chaves do Firebase: aceita o bloco firebaseConfig inteiro, do jeito que o
-// console mostra, numa variável só (FIREBASE_CONFIG, usada no GitHub Actions),
-// ou as variáveis VITE_FIREBASE_* separadas (arquivo .env, no computador).
-const CAMPOS = { apiKey: 'API_KEY', authDomain: 'AUTH_DOMAIN', projectId: 'PROJECT_ID', storageBucket: 'STORAGE_BUCKET', messagingSenderId: 'MESSAGING_SENDER_ID', appId: 'APP_ID' };
-for (const m of (process.env.FIREBASE_CONFIG || '').matchAll(/["']?(apiKey|authDomain|projectId|storageBucket|messagingSenderId|appId)["']?\s*:\s*["']([^"']+)["']/g)) {
-  const nome = `VITE_FIREBASE_${CAMPOS[m[1]]}`;
-  if (!process.env[nome]) process.env[nome] = m[2];
-}
-
 export default defineConfig({
   base: './',
-  define: { __APP_VERSION__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')) },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
@@ -42,6 +32,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // partes opcionais do jsPDF (HTML e SVG) que o app não usa: não vão para o celular
+        globIgnores: ['**/html2canvas*', '**/purify*', '**/index.es-*'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024
       }
     })

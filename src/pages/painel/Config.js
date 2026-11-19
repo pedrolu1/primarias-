@@ -58,10 +58,10 @@ export function paginaConfig(ctx) {
       el('section', { class: 'cartao' }, [
         el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Previsto e numeração'), el('p', {}, 'O previsto de cada semana vem da planilha da Curva S (sincronizada pela pasta). A numeração do RDO continua a da planilha; ajuste aqui só se precisar.')])]),
         el('div', { class: 'rdo-edicao' }, [
-          numero('Último RDO emitido fora do app (nº)', ultimo.numero, (v) => salvarConfig({ rdoUltimo: { ...ultimo, numero: Math.max(0, Math.round(Number(v) || RDO_ULTIMO.numero)) } }), { min: 0 }),
+          numero('Último RDO emitido fora do app (nº)', ultimo.numero, (v) => salvarConfig({ rdoUltimo: { ...ultimo, numero: Math.max(0, Math.round(Number(v) || RDO_ULTIMO.numero)), manual: true } }), { min: 0 }),
           el('label', { class: 'field' }, [
             el('span', { class: 'field-label' }, 'Data desse último RDO'),
-            el('input', { class: 'input', type: 'date', value: ultimo.data, disabled: !pode, onchange: (ev) => ev.target.value && salvarConfig({ rdoUltimo: { ...ultimo, data: ev.target.value } }) })
+            el('input', { class: 'input', type: 'date', value: ultimo.data, disabled: !pode, onchange: (ev) => ev.target.value && salvarConfig({ rdoUltimo: { ...ultimo, data: ev.target.value, manual: true } }) })
           ])
         ])
       ]),

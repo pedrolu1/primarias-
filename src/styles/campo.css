@@ -121,7 +121,6 @@
 .meu-lanc:last-child { border-bottom: none; }
 .meu-lanc .alvos { font-size: 13px; color: var(--text-2); margin-top: 4px; }
 .meu-lanc .estado { font-size: 12.5px; font-weight: 700; }
-.estado-pendente { color: var(--warn-500); }
 .estado-cancelado { color: var(--text-3); text-decoration: line-through; }
 
 /* ---- Lançar: etapas ---- */
@@ -228,14 +227,6 @@
 .check-forno small { color: var(--text-2); font-size: 13px; }
 .check-barra { height: 6px; border-radius: 3px; background: var(--bg-4); margin-top: 8px; overflow: hidden; }
 .check-barra i { display: block; height: 100%; background: var(--accent-grad); }
-.item-check {
-  display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: center; text-align: left; width: 100%;
-  padding: 14px 12px; border-radius: 14px; cursor: pointer; background: var(--bg-2); border: 1.5px solid var(--border-soft); color: var(--text-0); font-size: 15px; line-height: 1.35;
-}
-.item-check .caixa { width: 34px; height: 34px; border-radius: 10px; border: 2px solid var(--border-strong); display: flex; align-items: center; justify-content: center; color: transparent; transition: all var(--dur-fast) var(--ease-spring); }
-.item-check.ok { border-color: rgba(31, 154, 58, 0.5); background: color-mix(in srgb, var(--e-massa1200) 10%, var(--bg-2)); }
-.item-check.ok .caixa { background: var(--e-massa1200); border-color: transparent; color: #fff; transform: scale(1.04); }
-.item-check:disabled { cursor: default; }
 .status-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: var(--r-full); font-size: 12.5px; font-weight: 700; background: var(--bg-3); color: var(--text-1); border: 1px solid var(--border); white-space: nowrap; }
 .status-chip.planilha { background: var(--bg-3); color: var(--text-2); }
 .status-chip.aprovado, .status-chip.assinado { background: rgba(31, 154, 58, 0.16); color: #7fe39a; border-color: rgba(31, 154, 58, 0.4); }
@@ -244,15 +235,6 @@
 
 /* ---- RDO no celular ---- */
 .clima { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.efetivo-linha { display: grid; grid-template-columns: 1fr 132px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-soft); }
-.efetivo-linha:last-child { border-bottom: none; }
-.efetivo-linha span { font-size: 14.5px; }
-.efetivo-linha small { display: block; font-size: 12px; color: var(--text-2); }
-.passo-num { display: grid; grid-template-columns: 40px 1fr 40px; height: 42px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--bg-2); }
-.passo-num button { border: none; background: var(--bg-3); color: var(--text-0); font-size: 20px; cursor: pointer; }
-.passo-num button:active { background: var(--bg-4); }
-.passo-num output { display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 20px; }
-.passo-num.abaixo output { color: var(--warn-500); }
 
 /* ---- Perfil ---- */
 .perfil-topo { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 10px 0 4px; }

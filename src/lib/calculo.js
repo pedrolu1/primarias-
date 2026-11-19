@@ -193,10 +193,19 @@ function fornosFechadosEntre(calc, de, ate) {
   }).map((f) => f.id);
 }
 
-/** A curva do contrato inteiro, semana a semana, agrupada por BM. */
+/** A curva do contrato inteiro, semana a semana, agrupada por BM (guardada por cálculo e por dia). */
+const curvas = new WeakMap();
 export function curvaContrato(calc) {
-  const linhas = semanasDaPlanilha(calc);
   const dataHoje = hoje();
+  const guardada = curvas.get(calc);
+  if (guardada?.dia === dataHoje) return guardada.curva;
+  const curva = montarCurva(calc, dataHoje);
+  curvas.set(calc, { dia: dataHoje, curva });
+  return curva;
+}
+
+function montarCurva(calc, dataHoje) {
+  const linhas = semanasDaPlanilha(calc);
   const total = linhas.reduce((s, l) => s + (Number(l.previsto) || 0), 0) || 1;
   const comReplanejado = linhas.some((l) => l.replanejado != null);
   const contadas = new Set();
@@ -275,9 +284,6 @@ export function curvaBm(calc, bmId = bmAtual()) {
   return { bm: bmId, inicio, fim, meta, realizado: ra, faltam, pontos, atual, ritmo: restantes ? Math.ceil(faltam / restantes) : 0 };
 }
 
-/** Previsto (meta) de um BM, pela planilha da Curva S. */
-export const metaDoBm = (calc, bmId = bmAtual()) => curvaBm(calc, bmId).meta;
-
 /** BMs do contrato: os da planilha e os que já passaram, com meta e realizado. */
 export function bmsDoContrato(calc) {
   const ids = new Set(semanasDaPlanilha(calc).map((l) => l.bm));
@@ -341,7 +347,8 @@ export function primariasDoDia(calc, data, etapaId) {
  */
 export function rdoUltimo(calc) {
   const c = calc.estado.config?.rdoUltimo;
-  return c?.data && c.data >= RDO_ULTIMO.data ? { ...c, materiais: c.materiais || (c.data === RDO_ULTIMO.data ? RDO_ULTIMO.materiais : null) } : RDO_ULTIMO;
+  // o ajuste feito à mão na Configuração vale mesmo se for de antes
+  return c?.data && (c.manual || c.data >= RDO_ULTIMO.data) ? { ...c, materiais: c.materiais || (c.data === RDO_ULTIMO.data ? RDO_ULTIMO.materiais : null) } : RDO_ULTIMO;
 }
 
 // ---------------------------------------------------------------------------

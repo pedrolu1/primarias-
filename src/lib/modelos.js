@@ -47,14 +47,6 @@ export async function guardarModelo(chave, arquivo) {
   return modelo;
 }
 
-export async function apagarModelo(chave) {
-  try {
-    await operar('readwrite', (loja) => loja.delete(chave));
-  } catch {
-    /* nada a apagar */
-  }
-}
-
 /** Qualquer valor guardado neste aparelho (ex.: a pasta escolhida). */
 export async function lerValor(chave) {
   try {

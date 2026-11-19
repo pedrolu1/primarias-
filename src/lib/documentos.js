@@ -2,7 +2,7 @@
 // de entrega com as 8 fotos de cada forno (uma página A4 deitada por forno).
 import { SLOTS_FOTO, LADOS, rotulo, localMedicao, CLIENTE } from '../data/obra.js';
 import { lerFotos } from './banco.js';
-import { completa } from './datas.js';
+import { completa, iso } from './datas.js';
 
 export function baixar(bytes, nome, tipo = 'application/octet-stream') {
   const blob = bytes instanceof Blob ? bytes : new Blob([bytes], { type: tipo });
@@ -48,8 +48,8 @@ const SITUACAO = { pendente: 'sem fotos', rascunho: 'fotos em andamento', enviad
 
 const dataDe = (v) => {
   if (!v) return '';
-  if (typeof v === 'number') return completa(new Date(v).toISOString().slice(0, 10));
-  if (typeof v.toDate === 'function') return completa(v.toDate().toISOString().slice(0, 10));
+  if (typeof v === 'number') return completa(iso(new Date(v)));
+  if (typeof v.toDate === 'function') return completa(iso(v.toDate()));
   return '';
 };
 

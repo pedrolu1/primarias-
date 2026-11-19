@@ -4,7 +4,10 @@
 // para elas (no máximo a cada 10 minutos por arquivo, ou na hora pelo botão).
 import { lerValor, guardarValor } from './modelos.js';
 import { salvarBase, salvarConfig } from './banco.js';
-import { sincronizarPasta, acharPlanilhas, gravarTipo, TIPOS_PASTA } from './sincronia.js';
+import { TIPOS_PASTA } from './tiposPasta.js';
+
+// a leitura das planilhas (e o fflate) só carrega quando a pasta é usada
+const sincronia = () => import('./sincronia.js');
 
 const CHAVE_PASTA = 'pasta-primarias';
 const CHAVE_META = 'pasta-meta';
@@ -112,6 +115,7 @@ export async function sincronizar({ forcar = false } = {}) {
   estado.rodando = true;
   avisar();
   try {
+    const { sincronizarPasta } = await sincronia();
     const r = await sincronizarPasta(estado.pasta, obterCalc, { salvarBase, salvarConfig }, meta, { forcar });
     meta = r.meta;
     await guardarValor(CHAVE_META, meta);
@@ -157,6 +161,7 @@ export function arquivoNaPasta(tipo) {
 export async function gravarNaPasta(tipo, calc, opcoes = {}) {
   if (estado.permissao !== 'granted') throw new Error('Reconecte a pasta primarias antes.');
   // relê a pasta para pegar o arquivo atual (e ver se está aberto no Excel)
+  const { acharPlanilhas, gravarTipo } = await sincronia();
   estado.achados = await acharPlanilhas(estado.pasta);
   const arq = estado.achados[tipo];
   if (!arq) throw new Error(`Não achei a planilha ${TIPOS_PASTA[tipo].nome} na pasta.`);

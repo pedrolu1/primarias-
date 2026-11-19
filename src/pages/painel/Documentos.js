@@ -11,12 +11,12 @@ import { abrirImpressao } from '../../components/impressao.js';
 import { NOME_STATUS } from '../../components/checklistFotos.js';
 import { ic } from '../../lib/icones.js';
 import { ETAPAS_MAPA, CLIENTE, SERVICO, contratoAtivo, localMedicao, rotulo } from '../../data/obra.js';
-import { curvaBm, curvaContrato, bmsDoContrato, bmAtual, contagemPorEtapa, relacaoDoBm } from '../../lib/calculo.js';
+import { curvaContrato, bmsDoContrato, bmAtual, contagemPorEtapa, relacaoDoBm } from '../../lib/calculo.js';
 import { cartaoPasta } from '../../components/pastaCartao.js';
 import { arquivoNaPasta } from '../../lib/pasta.js';
 import { MODELOS, modeloGuardado, estaOcupado, ocupar, escolherArquivo, gerarExcel, usarRedesenho } from '../../lib/excel.js';
 import { baixar, pdfChecklists } from '../../lib/documentos.js';
-import { hoje, completa, curta, nomeBm, rotuloBm, referenciaBm, periodoBm } from '../../lib/datas.js';
+import { hoje, completa, rotuloBm, referenciaBm, periodoBm } from '../../lib/datas.js';
 import { toast } from '../../base/toast.js';
 
 let bmEscolhido = null;
@@ -86,7 +86,6 @@ export function paginaDocumentos(ctx) {
     return el('button', { class: 'btn btn-outline btn-sm', type: 'button', disabled: gerando, onclick: fn }, [el('span', { html: gerando ? '' : ic.imprimir(15), class: gerando ? 'spinner' : '', style: { display: 'inline-flex' } }), gerando ? 'Gerando…' : rotulo]);
   };
 
-  const c = curvaBm(calc, bmEscolhido);
   const comFotos = rel.filter((r) => r.checklist && r.checklist.origem !== 'planilha');
 
   return [

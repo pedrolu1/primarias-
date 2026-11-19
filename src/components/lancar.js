@@ -202,7 +202,10 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
     const antes = calcular(estadoAtual());
     const statsAntes = statsPessoa(antes, perfil.uid);
     const lanc = lancar({ etapa: st.etapa, alvos: alvosEscolhidos(), data: st.data, obs: st.obs, autor: autorDe(perfil) });
-    const depois = calcular(estadoAtual());
+    // o banco online só avisa a mudança um instante depois: calcula já com o
+    // lançamento novo, para a comemoração (forno, bloco, nível) sair na hora
+    const lancamentos = antes.estado.lancamentos.some((l) => l.id === lanc.id) ? antes.estado.lancamentos : [...antes.estado.lancamentos, lanc];
+    const depois = calcular({ ...antes.estado, versao: `${antes.estado.versao}+${lanc.id}`, lancamentos });
     const statsDepois = statsPessoa(depois, perfil.uid);
     const ef = efeitosDoLancamento(antes, depois, lanc);
     const e = etapaPorId[st.etapa];

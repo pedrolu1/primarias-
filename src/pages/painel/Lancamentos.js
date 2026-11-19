@@ -48,6 +48,10 @@ export function paginaLancamentos(ctx) {
                 ]))
           ])))
         ]))
+      : null,
+    lista.length > 200 ? el('p', { class: 'fraco', style: { fontSize: '13px' } }, `Mostrando os 200 mais recentes de ${lista.length}. Use os filtros para achar os mais antigos.`) : null,
+    lista.length
+      ? null
       : el('div', { class: 'cartao' }, el('div', { class: 'vazio-convite' }, [el('strong', {}, 'Nenhum lançamento no app ainda'), 'O histórico das planilhas já está no mapa e nas curvas. Os lançamentos novos do campo aparecem aqui.']))
   ];
 }

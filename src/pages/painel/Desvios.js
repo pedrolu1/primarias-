@@ -52,8 +52,8 @@ export function paginaDesvios(ctx) {
             salvarDesvio(d, novo.empresa || novo.motivo || novo.obs ? novo : null);
           };
           const sel = (valor, opcoes, campo) => (leitura
-            ? valor || '—'
-            : el('select', { class: 'select', style: { height: '34px', minWidth: '150px', fontSize: '13.5px' }, onchange: (ev) => salvar({ [campo]: ev.target.value }) }, [el('option', { value: '' }, '—'), ...opcoes.map((o) => el('option', { value: o, selected: o === valor }, o)), valor && !opcoes.includes(valor) ? el('option', { value: valor, selected: true }, valor) : null]));
+            ? valor || '-'
+            : el('select', { class: 'select', style: { height: '34px', minWidth: '150px', fontSize: '13.5px' }, onchange: (ev) => salvar({ [campo]: ev.target.value }) }, [el('option', { value: '' }, '-'), ...opcoes.map((o) => el('option', { value: o, selected: o === valor }, o)), valor && !opcoes.includes(valor) ? el('option', { value: valor, selected: true }, valor) : null]));
           return el('tr', {}, [
             el('td', { class: 'strong', style: { whiteSpace: 'nowrap' } }, `${curta(d)} ${nomeDia(d).slice(0, 3)}`),
             el('td', {}, semana(d)),

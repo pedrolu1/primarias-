@@ -5,7 +5,6 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: 0; }
 .btn-sm { font-size: 14px; }
 .data-table thead th { text-transform: none; letter-spacing: 0; font-size: 13px; font-family: var(--font-body); color: var(--text-2); }
 .desktop-topbar { background: rgba(12, 17, 29, 0.88); }
-.mobile-topbar { background: rgba(12, 17, 29, 0.88); }
 .card { background: var(--bg-2); }
 
 /* marca: a palavra Primárias em brasa */
@@ -21,7 +20,6 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: 0; }
   -webkit-text-fill-color: transparent;
 }
 .marca-lg { font-size: 56px; }
-.marca-md { font-size: 26px; }
 .marca-sm { font-size: 22px; }
 .marca-tag { font-size: 12.5px; color: var(--text-2); font-weight: 600; letter-spacing: 0.02em; }
 
@@ -112,7 +110,6 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: 0; }
 .perfil-op strong { font-family: var(--font-display); font-size: 21px; }
 .perfil-op span { font-size: 13.5px; color: var(--text-2); line-height: 1.4; }
 .perfil-op em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--accent-300); }
-.aviso-demo { font-size: 13px; color: var(--text-2); line-height: 1.5; border-left: 2px solid var(--accent-500); padding-left: 12px; }
 
 /* pílula "Demonstração" no topo: troca de papel, simulação e restaurar dados */
 .demo-pilula {

@@ -7,7 +7,7 @@ import { graficoCurvaS } from '../../components/curvaS.js';
 import { graficoBms } from '../../components/graficos.js';
 import { contratoAtivo } from '../../data/obra.js';
 import { curvaContrato, curvaBm, bmsDoContrato, bmAtual } from '../../lib/calculo.js';
-import { curta, rotuloBm, completa } from '../../lib/datas.js';
+import { curta, rotuloBm, completa, hoje } from '../../lib/datas.js';
 
 let modo = 'numero';
 const qtd = (n) => `${n} forno${n === 1 ? '' : 's'}`;
@@ -68,7 +68,7 @@ export function paginaCurva(ctx) {
       ]))
     ]),
     el('section', { class: 'cartao' }, [
-      el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Fornos revestidos por BM'), el('p', {}, `Previsto da planilha × realizado · situação em ${completa(new Date().toISOString().slice(0, 10))}`)])]),
+      el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Fornos revestidos por BM'), el('p', {}, `Previsto da planilha × realizado · situação em ${completa(hoje())}`)])]),
       graficoBms(bms)
     ])
   ];

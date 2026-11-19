@@ -2,7 +2,7 @@
 import { el } from '../base/dom.js';
 import { ic } from '../lib/icones.js';
 import { estadoPasta, pastaSuportada, escolherPasta, reconectarPasta, esquecerPasta, sincronizar } from '../lib/pasta.js';
-import { TIPOS_PASTA } from '../lib/sincronia.js';
+import { TIPOS_PASTA } from '../lib/tiposPasta.js';
 
 const hora = (t) => (t ? new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
 

@@ -11,16 +11,11 @@ import * as P from './planilhas.js';
 import { FORNOS, contratoAtivo } from '../data/obra.js';
 import { semanasDaPlanilha, rdoUltimo } from './calculo.js';
 import { hoje, inicioDaSemana } from './datas.js';
+import { TIPOS_PASTA } from './tiposPasta.js';
 
 export const PASTA_BACKUP = '_backup_app';
 const BACKUPS_POR_ARQUIVO = 7;
 
-export const TIPOS_PASTA = {
-  gestao: { nome: 'Gestão Visual', auto: true, teste: (n) => /gest.{0,2}o.?visual/i.test(n) },
-  curva: { nome: 'Curva S', auto: true, teste: (n) => /curva.?s(?![a-z])/i.test(n) },
-  rdo: { nome: 'RDO', auto: true, teste: (n) => /plan.?rfx.?002|(^|[^a-z])rdo([^a-z]|$)/i.test(n) },
-  resumo: { nome: 'Resumo da medição', auto: false, teste: (n) => /resumo|espelho/i.test(n) }
-};
 
 const ehPlanilha = (n) => /\.(xlsx|xlsm)$/i.test(n) && !n.startsWith('~$') && !n.startsWith('.');
 

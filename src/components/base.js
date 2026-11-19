@@ -98,22 +98,3 @@ export function legendaEtapas({ ativas = null, aoAlternar = null } = {}) {
 }
 
 export const statusChip = (status, texto) => el('span', { class: `status-chip ${status}` }, texto);
-
-/** Contador −/+ grande, para usar com luva. */
-export function passoNumero({ valor, min = 0, max = 999, previsto = null, aoMudar, desativado = false }) {
-  const saida = el('output', {}, String(valor));
-  const caixa = el('div', { class: `passo-num${previsto != null && valor < previsto ? ' abaixo' : ''}` });
-  const mudar = (d) => {
-    valor = Math.max(min, Math.min(max, valor + d));
-    saida.textContent = String(valor);
-    caixa.classList.toggle('abaixo', previsto != null && valor < previsto);
-    navigator.vibrate?.(6);
-    aoMudar(valor);
-  };
-  caixa.append(
-    el('button', { type: 'button', 'aria-label': 'Menos', disabled: desativado, onclick: () => mudar(-1) }, '−'),
-    saida,
-    el('button', { type: 'button', 'aria-label': 'Mais', disabled: desativado, onclick: () => mudar(1) }, '+')
-  );
-  return caixa;
-}

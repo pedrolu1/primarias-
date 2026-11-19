@@ -18,7 +18,7 @@ const ERROS = {
   'sem-permissao': 'Sem permissão. Conta de administrador, só o dono do app muda.',
   'nao-configurado': 'O servidor ainda não tem a chave do Firebase (veja o aviso no topo desta página).',
   principal: 'A conta do dono do app não muda por aqui.',
-  'propria-conta': 'Para a sua senha, use "Trocar minha senha" no seu perfil.',
+  'propria-conta': 'Para a sua senha, use "Trocar senha" no menu lateral.',
   rede: 'Sem conexão. Tente de novo com internet.',
   usuario: 'Essa pessoa não tem mais cadastro.'
 };
