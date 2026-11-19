@@ -1,5 +1,6 @@
 // Mapa visual da bateria, desenhado como ela é: duas metades de 4 blocos,
 // com os lados coque virados para a via do carro de apagamento no meio.
+// A faixa amarela na ponta de cada lado do forno é o andaime montado.
 import { el } from '../base/dom.js';
 import { cel } from './base.js';
 import { ETAPAS_MAPA, FORNOS, blocosDa, fornoPorId, primariaPorId, FORNOS_POR_BLOCO } from '../data/obra.js';
@@ -65,14 +66,17 @@ function colunaForno(calc, fid, ordem, { aoClicarForno, etapasVisiveis, mudou, f
     const apagada = etapasVisiveis && (n < 0 || !etapasVisiveis.has(ETAPAS_MAPA[n].id));
     return cel(n, { nova: mudou?.has(pr.idx), apagada });
   };
-  const resumo = fc.concluidoEm ? 'concluído' : `${fc.niveis.filter((n) => n === ETAPAS_MAPA.length - 1).length} de 6 primárias prontas`;
+  const montados = ['LM', 'LC'].filter((l) => fc.andaime[l] === 'montado');
+  const resumo = `${fc.concluidoEm ? 'concluído' : `${fc.niveis.filter((n) => n === ETAPAS_MAPA.length - 1).length} de 6 primárias prontas`}${montados.length ? ` · andaime montado no ${montados.join(' e no ')}` : ''}`;
+  const andaime = (lado) => el('span', { class: `and${fc.andaime[lado] === 'montado' ? ' montado' : ''}`, 'aria-hidden': 'true' });
+  const ladoDe = (p) => (p <= 3 ? 'LM' : 'LC');
   return el('button', {
     type: 'button',
     class: `mf${fc.concluidoEm ? ' fechado' : ''}${foco === fid ? ' foco' : ''}`,
     title: `${fid.replace('-', ' · ')} · ${resumo}`,
     'aria-label': `${fid}, ${resumo}`,
     onclick: () => aoClicarForno?.(fid)
-  }, [...ordem.cima.map(celula), el('span', { class: 'n' }, String(f.forno)), ...ordem.baixo.map(celula)]);
+  }, [andaime(ladoDe(ordem.cima[0])), ...ordem.cima.map(celula), el('span', { class: 'n' }, String(f.forno)), ...ordem.baixo.map(celula), andaime(ladoDe(ordem.baixo[0]))]);
 }
 
 /** Mapa de um bloco no celular: 18 linhas, LM à esquerda e LC à direita, F18 em cima como na planilha. */
@@ -86,10 +90,12 @@ export function mapaBloco(calc, bloco, { aoClicarForno, mudou = null } = {}) {
         const p = primariaPorId[f.prims[k]];
         return cel(calc.nivel[p.idx], { nova: mudou?.has(p.idx) });
       };
-      return el('button', { type: 'button', class: `mapa-m-linha${fc.concluidoEm ? ' fechado' : ''}`, 'aria-label': `Forno ${f.forno}${fc.concluidoEm ? ', concluído' : ''}`, onclick: () => aoClicarForno?.(f.id) }, [
-        el('div', { class: 'lado' }, [c(0), c(1), c(2)]),
+      const lado = (l, cels) => el('div', { class: `lado${fc.andaime[l] === 'montado' ? ' com-andaime' : ''}`, title: fc.andaime[l] === 'montado' ? `Andaime montado no ${l}` : '' }, cels);
+      const montados = ['LM', 'LC'].filter((l) => fc.andaime[l] === 'montado');
+      return el('button', { type: 'button', class: `mapa-m-linha${fc.concluidoEm ? ' fechado' : ''}`, 'aria-label': `Forno ${f.forno}${fc.concluidoEm ? ', concluído' : ''}${montados.length ? `, andaime montado no ${montados.join(' e no ')}` : ''}`, onclick: () => aoClicarForno?.(f.id) }, [
+        lado('LM', [c(0), c(1), c(2)]),
         el('span', { class: 'fno' }, `F${String(f.forno).padStart(2, '0')}`),
-        el('div', { class: 'lado' }, [c(3), c(4), c(5)])
+        lado('LC', [c(3), c(4), c(5)])
       ]);
     })
   ]);

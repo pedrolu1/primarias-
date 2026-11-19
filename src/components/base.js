@@ -84,9 +84,10 @@ export function etiquetaEtapa(etapa) {
   return el('span', { class: `etiqueta-etapa cor-${etapa.id}` }, [el('span', { class: 'ponto' }), etapa.curto]);
 }
 
-export function legendaEtapas({ ativas = null, aoAlternar = null, pendente = true } = {}) {
+export function legendaEtapas({ ativas = null, aoAlternar = null, pendente = true, andaime = false } = {}) {
   const itens = [
     pendente ? el('span', {}, [el('span', { class: 'ponto vazio' }), 'Pendente']) : null,
+    andaime ? el('span', {}, [el('span', { class: 'traco-andaime' }), 'Andaime montado']) : null,
     ...ETAPAS_MAPA.map((e, i) => {
       const conteudo = [el('span', { class: `ponto cor-${e.id}` }), `${i + 1} ${e.curto}`];
       if (!aoAlternar) return el('span', {}, conteudo);
@@ -97,3 +98,16 @@ export function legendaEtapas({ ativas = null, aoAlternar = null, pendente = tru
 }
 
 export const statusChip = (status, texto) => el('span', { class: `status-chip ${status}` }, texto);
+
+/** Andamento da bateria em cartõezinhos: fornos com andaime montado e primárias por etapa. */
+export function faixaAndamento(a) {
+  const n = (v) => v.toLocaleString('pt-BR');
+  const item = (cor, rotulo, valor, sub) => el('div', { style: { '--cor': cor } }, [el('small', {}, rotulo), el('strong', {}, n(valor)), el('span', {}, sub)]);
+  return el('div', { class: 'andamento' }, [
+    item('var(--andaime)', 'Com andaime', a.fornosComAndaime, `${a.fornosComAndaime === 1 ? 'forno' : 'fornos'}, ${a.ladosComAndaime} ${a.ladosComAndaime === 1 ? 'lado' : 'lados'}`),
+    item('var(--e-demolicao)', 'Demolidas', a.demolidas, `de ${n(a.primarias)}`),
+    item('var(--e-assentamento)', 'Instaladas', a.instaladas, `de ${n(a.primarias)}`),
+    item('var(--e-injetbar)', 'Com Injetbar', a.injetbar, `de ${n(a.primarias)}`),
+    item('var(--e-massa1200)', 'Revestidas', a.revestidas, `massa 1200, de ${n(a.primarias)}`)
+  ]);
+}

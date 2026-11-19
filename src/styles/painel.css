@@ -39,6 +39,8 @@ button.indicador:hover { background: var(--bg-3); }
 .mf { display: flex; flex-direction: column; gap: 2px; align-items: center; padding: 3px 1px; border-radius: 5px; cursor: pointer; border: none; background: none; color: inherit; }
 .mf:hover, .mf:focus-visible { background: var(--bg-4); outline: none; }
 .mf .cel { font-size: 0; border-radius: 2px; }
+.mf .and { width: var(--cel); height: 3px; border-radius: 2px; }
+.mf .and.montado { background: var(--andaime); }
 .mf .n { font-family: var(--font-display); font-size: 10px; font-weight: 600; color: var(--text-3); line-height: 1; height: 12px; display: flex; align-items: center; }
 .mf.fechado .n { color: #7fe39a; }
 .mf.foco { background: var(--bg-4); box-shadow: 0 0 0 1px var(--accent-400); }

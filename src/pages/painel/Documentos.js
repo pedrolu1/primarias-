@@ -145,7 +145,7 @@ function imprimirMapa(calc) {
     subtitulo: `${contratoAtivo().nome} · situação em ${completa(hoje())}`,
     paisagem: true,
     conteudo: [
-      legendaEtapas(),
+      legendaEtapas({ andaime: true }),
       mapaBateria(calc, bat, { grande: true }),
       el('table', { class: 'doc-tabela' }, [
         el('thead', {}, el('tr', {}, [el('th', {}, 'Situação (etapa mais avançada)'), el('th', { class: 'n' }, 'Primárias'), el('th', { class: 'n' }, '%')])),

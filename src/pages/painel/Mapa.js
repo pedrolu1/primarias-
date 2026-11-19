@@ -1,12 +1,12 @@
 // Mapa visual: a bateria inteira, com filtro por etapa e as outras baterias.
 import { el } from '../../base/dom.js';
 import { segmented } from '../../base/ui.js';
-import { legendaEtapas } from '../../components/base.js';
+import { legendaEtapas, faixaAndamento } from '../../components/base.js';
 import { mapaBateria } from '../../components/mapa.js';
 import { abrirForno } from '../../components/detalheForno.js';
 import { abrirChecklistFotos } from '../../components/checklistFotos.js';
 import { BATERIAS, CONTRATOS, ETAPAS_MAPA, contratoAtivo } from '../../data/obra.js';
-import { contagemPorEtapa, avancoFisico, idxsDaBateria } from '../../lib/calculo.js';
+import { contagemPorEtapa, avancoFisico, idxsDaBateria, andamento } from '../../lib/calculo.js';
 import { cancelarLancamento } from '../../lib/banco.js';
 import { toast } from '../../base/toast.js';
 
@@ -43,7 +43,8 @@ export function paginaMapa(ctx) {
         el('div', {}, [el('h3', {}, `Bateria ${bateria}`), el('p', {}, 'Clique numa etapa da legenda para destacar só ela. Clique num forno para ver as datas, quem lançou e as fotos.')]),
         visiveis ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => { visiveis = null; redesenhar(); } }, 'Mostrar todas') : null
       ]),
-      legendaEtapas({ ativas: visiveis, aoAlternar: (id) => {
+      faixaAndamento(andamento(calc, bateria)),
+      legendaEtapas({ andaime: true, ativas: visiveis, aoAlternar: (id) => {
         visiveis = visiveis ? new Set(visiveis) : new Set();
         if (visiveis.has(id)) visiveis.delete(id);
         else visiveis.add(id);

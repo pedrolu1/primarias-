@@ -52,6 +52,19 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: 0; }
 .legenda span { display: inline-flex; align-items: center; gap: 6px; }
 .legenda .ponto { width: 12px; height: 12px; }
 .legenda .vazio { background: var(--e-pendente); border: 1px solid var(--border); }
+.andamento { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.andamento > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--r-md); background: var(--bg-3); border-top: 3px solid var(--cor); min-width: 0; }
+.andamento small { font-size: 12.5px; font-weight: 700; color: var(--text-1); }
+.andamento strong { font-family: var(--font-display); font-size: 26px; line-height: 1.05; }
+.andamento span { font-size: 12px; color: var(--text-2); }
+@media (max-width: 640px) {
+  .andamento { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .andamento > div { padding: 8px 9px; }
+  .andamento small { font-size: 11.5px; }
+  .andamento strong { font-size: 22px; }
+  .andamento span { font-size: 11px; }
+}
+.legenda .traco-andaime { width: 16px; height: 4px; border-radius: 2px; background: var(--andaime); }
 .legenda button { all: unset; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding: 3px 8px; border-radius: var(--r-full); }
 .legenda button:hover { background: var(--bg-3); }
 .legenda button.apagada { opacity: 0.35; }

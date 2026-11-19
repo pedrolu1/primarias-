@@ -32,9 +32,11 @@ fornos da coqueria. Publicado em https://reframax-primarias.netlify.app (site
 - **Pasta primarias:** no Chrome ou no Edge do computador, o planejador escolhe
   a pasta uma vez (Documentos). Com o painel aberto, a cada minuto o app olha as
   planilhas: o que mudou no Excel vem para o app (base do mapa, previsto da
-  Curva S, último RDO) e o que mudou no app vai para o Excel (no máximo a cada
-  10 minutos por arquivo, ou na hora pelo botão "Sincronizar agora"). Arquivo
-  aberto no Excel espera fechar. Antes de mudar um arquivo, o app guarda uma
+  Curva S, último RDO) e o que mudou no app vai para o Excel (no máximo uma vez
+  por minuto por arquivo, ou na hora pelo botão "Sincronizar agora"). O RDO do
+  dia vira aba nova no primeiro lançamento e é atualizado a cada lançamento até
+  o planejador fechar; ajuste do RDO do dia se faz no painel, porque o app
+  reescreve a aba dele. Arquivo aberto no Excel espera fechar. Antes de mudar um arquivo, o app guarda uma
   cópia do dia em `_backup_app`, ao lado dele (ficam as 7 mais recentes).
 - **Sem internet:** o que for lançado (fotos inclusive) fica no aparelho e sobe
   sozinho quando a rede volta. O aviso no topo mostra "Sem internet", "Enviando"

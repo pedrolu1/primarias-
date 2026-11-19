@@ -1,6 +1,6 @@
 // Visão geral: indicadores, a bateria ao vivo, o feed e as curvas.
 import { el } from '../../base/dom.js';
-import { legendaEtapas, statusChip } from '../../components/base.js';
+import { legendaEtapas, statusChip, faixaAndamento } from '../../components/base.js';
 import { mapaBateria } from '../../components/mapa.js';
 import { feed } from '../../components/feed.js';
 import { graficoProducao } from '../../components/graficos.js';
@@ -8,7 +8,7 @@ import { graficoCurvaS } from '../../components/curvaS.js';
 import { abrirForno } from '../../components/detalheForno.js';
 import { abrirChecklistFotos } from '../../components/checklistFotos.js';
 import { FORNOS, contratoAtivo } from '../../data/obra.js';
-import { avancoFisico, idxsDaBateria, semanaAtual, producaoDiaria, rdoDoDia, checklists, curvaContrato } from '../../lib/calculo.js';
+import { avancoFisico, idxsDaBateria, semanaAtual, producaoDiaria, rdoDoDia, checklists, curvaContrato, andamento } from '../../lib/calculo.js';
 import { hoje, somarDias, rotuloBm, curta } from '../../lib/datas.js';
 
 const pct = (v, casas = 1) => `${(v * 100).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })}%`;
@@ -44,8 +44,9 @@ export function paginaVisao({ calc, perfil, leitura, mudou, ir }) {
       el('div', {}, [el('h3', {}, `Bateria ${bat}`), el('p', {}, 'Cada quadrado é uma primária; a cor é a etapa mais avançada. Clique num forno.')]),
       el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => ir('mapa') }, 'Abrir o mapa')
     ]),
+    faixaAndamento(andamento(calc, bat)),
     mapaBateria(calc, bat, { mudou, aoClicarForno: abrir }),
-    legendaEtapas()
+    legendaEtapas({ andaime: true })
   ]);
   const aoVivo = el('section', { class: 'cartao' }, [
     el('div', { class: 'cartao-topo' }, [el('h3', {}, 'Ao vivo'), el('span', { class: 'ao-vivo' }, 'tempo real')]),

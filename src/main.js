@@ -12,6 +12,7 @@ import { estadoAtual, restaurarDemo } from './lib/banco.js';
 import { simulando, alternarSimulacao } from './lib/simulacao.js';
 import { abrirFolha, cel } from './components/base.js';
 import { ic } from './lib/icones.js';
+import { instalado, instalarApp } from './components/instalar.js';
 
 const app = document.getElementById('app');
 let desmontar = null;
@@ -110,6 +111,7 @@ function login() {
           ? ['Já tem conta? ', el('button', { type: 'button', onclick: () => { telaLogin = 'entrar'; login(); } }, 'Entrar')]
           : ['Primeiro acesso? ', el('button', { type: 'button', onclick: () => { telaLogin = 'cadastro'; login(); } }, 'Criar conta')]),
         cadastro ? null : el('div', { class: 'acesso-troca' }, el('button', { type: 'button', onclick: () => esqueciSenha(matricula.value) }, 'Esqueci minha senha')),
+        instalado() ? null : el('div', { class: 'acesso-troca' }, el('button', { type: 'button', onclick: instalarApp }, 'Colocar o app na tela do celular')),
         el('div', { class: 'credito' }, CREDITO)
       ])
     ])

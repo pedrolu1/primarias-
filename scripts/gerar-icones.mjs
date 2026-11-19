@@ -1,4 +1,4 @@
-// Gera os ícones do app Primárias (public/icons/icon-192.png e icon-512.png):
+// Gera os ícones do app Primárias (public/icons/icon-180, 192 e 512.png; o de 180 é o do iPhone):
 // as 6 primárias de um forno (3 do lado máquina em cima, 3 do lado coque
 // embaixo) no azul da Reframax, em fundo azul-marinho. Desenho pixel a pixel,
 // sem bibliotecas. Rode de novo se mudar as cores da marca: npm run icones
@@ -103,7 +103,7 @@ function encodePNG(size) {
 }
 
 mkdirSync(new URL('../public/icons', import.meta.url), { recursive: true });
-for (const size of [192, 512]) {
+for (const size of [180, 192, 512]) {
   const png = encodePNG(size);
   writeFileSync(new URL(`../public/icons/icon-${size}.png`, import.meta.url), png);
   console.log(`gerado public/icons/icon-${size}.png (${png.length} bytes)`);

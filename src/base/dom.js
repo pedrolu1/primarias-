@@ -8,7 +8,11 @@ export function el(tag, props = {}, children = []) {
     else if (key.startsWith('on') && typeof value === 'function') {
       node.addEventListener(key.slice(2).toLowerCase(), value);
     } else if (key === 'style' && typeof value === 'object') {
-      Object.assign(node.style, value);
+      // variáveis CSS (--cor) só entram por setProperty
+      for (const [k, v] of Object.entries(value)) {
+        if (k.startsWith('--')) node.style.setProperty(k, v);
+        else node.style[k] = v;
+      }
     } else if (key in node && key !== 'list') {
       try {
         node[key] = value;

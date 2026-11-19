@@ -569,6 +569,26 @@ export function contagemPorEtapa(calc, bat) {
   return c;
 }
 
+/**
+ * Andamento da bateria: primárias que já passaram por cada etapa (acumulado,
+ * mesmo as que já seguiram adiante) e os andaimes montados agora.
+ */
+export function andamento(calc, bat) {
+  const prims = PRIMARIAS.filter((p) => p.bateria === bat);
+  const fornos = FORNOS.filter((f) => f.bateria === bat);
+  const feitas = (etapa) => prims.filter((p) => calc.feitas[p.idx][IDX[etapa]]).length;
+  const montados = (f) => ['LM', 'LC'].filter((l) => calc.fornos[f.id].andaime[l] === 'montado').length;
+  return {
+    primarias: prims.length,
+    fornosComAndaime: fornos.filter((f) => montados(f) > 0).length,
+    ladosComAndaime: fornos.reduce((s, f) => s + montados(f), 0),
+    demolidas: feitas('demolicao'),
+    instaladas: feitas('assentamento'),
+    injetbar: feitas('injetbar'),
+    revestidas: feitas('massa1200')
+  };
+}
+
 /** Etapas feitas por dia (primária × etapa) num intervalo, separadas por etapa. */
 export function producaoDiaria(calc, de, ate) {
   const bat = contratoAtivo().bateria;

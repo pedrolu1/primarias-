@@ -611,13 +611,24 @@ const materialDaLinha = (aba, r) => {
 };
 
 /** Última aba do RDO: número, data e acumulado de cada material. */
-export function lerRdoPlanilha(bytes) {
+/**
+ * Último RDO emitido pela equipe. `doApp` ({ número: { data } }) são as abas
+ * que o próprio app escreveu (o RDO do dia, em preenchimento): elas não contam
+ * como emitidas, senão o app pararia de atualizar o dia.
+ */
+export function lerRdoPlanilha(bytes, { doApp = {} } = {}) {
   const pacote = abrirPacote(bytes);
   const abas = abasDoRdo(pacote);
   if (!abas.length) throw new Error('Não achei as abas numeradas do RDO. Confira se é a planilha PLAN-RFX-002.');
   const strings = stringsDe(pacote);
-  const ultima = abas[abas.length - 1];
-  const aba = new Aba(pacote.ler(ultima.caminho), strings);
+  let ultima = abas[abas.length - 1];
+  let aba = new Aba(pacote.ler(ultima.caminho), strings);
+  for (let i = abas.length - 1; i > 0; i--) {
+    const c = aba.valor('C2');
+    if (!(typeof c === 'number' && doApp[abas[i].numero]?.data === dataDoSerial(c))) break;
+    ultima = abas[i - 1];
+    aba = new Aba(pacote.ler(ultima.caminho), strings);
+  }
   const c2 = aba.valor('C2');
   const materiais = {};
   for (let r = 44; r <= 60; r++) {

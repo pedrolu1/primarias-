@@ -4,13 +4,14 @@
 // cara, nos testes), o cálculo atual e as ações de gravar no banco.
 //   - Gestão Visual: a base do mapa vem dela; os lançamentos voltam para ela.
 //   - Curva S: o previsto vem dela; o realizado volta para ela.
-//   - RDO: o último número e o acumulado de materiais vêm dele; os RDOs
-//     fechados no app viram abas novas nele.
+//   - RDO: o último número e o acumulado de materiais vêm dele; o RDO do dia
+//     vira aba nova no primeiro lançamento e é atualizado a cada mudança até
+//     o planejador fechar.
 // Antes de mudar um arquivo, o app guarda uma cópia do dia em _backup_app.
 import * as P from './planilhas.js';
 import { FORNOS, contratoAtivo } from '../data/obra.js';
-import { semanasDaPlanilha, rdoUltimo } from './calculo.js';
-import { hoje, inicioDaSemana } from './datas.js';
+import { semanasDaPlanilha, rdoUltimo, rdoDoDia } from './calculo.js';
+import { hoje, inicioDaSemana, somarDias } from './datas.js';
 import { TIPOS_PASTA } from './tiposPasta.js';
 
 export const PASTA_BACKUP = '_backup_app';
@@ -54,6 +55,27 @@ export async function acharPlanilhas(dir) {
   return achados;
 }
 
+/**
+ * RDOs que o app escreve na planilha a cada lançamento: os dias da última
+ * semana depois do último RDO emitido pela equipe, com algo registrado. O
+ * dia em preenchimento é reescrito a cada mudança; o fechado, uma vez só.
+ */
+export function rdosParaGravar(calc) {
+  const hj = hoje();
+  const ultimo = rdoUltimo(calc);
+  const doApp = calc.estado.config?.rdoDoApp || {};
+  const dias = [];
+  for (let d = somarDias(hj, -7); d <= hj; d = somarDias(d, 1)) {
+    if (d <= ultimo.data) continue;
+    const r = rdoDoDia(calc, d);
+    if (!r.numero || (!r.atividades.length && !r.ocorrencias.length && !r.salvo)) continue;
+    const ja = doApp[r.numero];
+    if (ja?.data === d && ['fechado', 'assinado'].includes(ja.status) && ja.status === r.status) continue;
+    dias.push(r);
+  }
+  return dias;
+}
+
 /** Marca do que o app tem para cada planilha: se mudar, a planilha precisa ser gravada. */
 export function assinatura(tipo, calc) {
   const e = calc.estado;
@@ -64,11 +86,12 @@ export function assinatura(tipo, calc) {
     const bat = contratoAtivo().bateria;
     texto = `${inicioDaSemana(hoje())}|${FORNOS.filter((f) => f.bateria === bat && calc.fornos[f.id].concluidoEm).map((f) => `${f.id}:${calc.fornos[f.id].concluidoEm}`).join('|')}`;
   } else if (tipo === 'rdo') {
-    texto = Object.entries(e.rdos || {})
+    const fechados = Object.entries(e.rdos || {})
       .filter(([, r]) => ['fechado', 'assinado'].includes(r?.status))
       .map(([d, r]) => `${d}:${r.numero}:${r.status}:${r.fechadoEm || ''}`)
-      .sort()
-      .join('|');
+      .sort();
+    const dias = rdosParaGravar(calc).map((r) => JSON.stringify([r.data, r.numero, r.status, r.colunas, r.materiais, r.salvo || null, r.ocorrencias.map((o) => o.texto)]));
+    texto = [...fechados, ...dias].join('|');
   }
   let h = 5381;
   for (let i = 0; i < texto.length; i++) h = ((h << 5) + h + texto.charCodeAt(i)) | 0;
@@ -92,7 +115,7 @@ async function importar(tipo, bytes, calc, acoes, arquivo) {
     return 'previsto da Curva S atualizado';
   }
   if (tipo === 'rdo') {
-    const u = P.lerRdoPlanilha(bytes);
+    const u = P.lerRdoPlanilha(bytes, { doApp: calc.estado.config?.rdoDoApp || {} });
     const atual = rdoUltimo(calc);
     if (!u.data || (u.numero === Number(atual.numero) && u.data === atual.data && mesmo(u.materiais, atual.materiais))) return null;
     await acoes.salvarConfig({ rdoUltimo: { numero: u.numero, data: u.data, materiais: u.materiais, arquivo, importadoEm: Date.now() } });
@@ -115,7 +138,7 @@ export function preencher(tipo, bytes, calc, opcoes = {}) {
     const r = P.gravarRdos(bytes, calc, { datas: opcoes.datas || [] });
     const conflitos = r.resumo.conflitos.map((c) => `${c.data}: ${c.motivo}`);
     if (!r.resumo.gravadas.length) return conflitos.length ? { bytes: null, texto: '', conflitos } : null;
-    return { bytes: r.bytes, texto: `RDO ${r.resumo.gravadas.map((g) => g.numero).join(', ')}`, conflitos };
+    return { bytes: r.bytes, texto: `RDO ${r.resumo.gravadas.map((g) => g.numero).join(', ')}`, conflitos, gravadas: r.resumo.gravadas };
   }
   if (tipo === 'resumo') {
     const r = P.gerarEspelho(bytes, calc, opcoes.bm);
@@ -176,6 +199,13 @@ export async function gravarTipo(arq, calc, opcoes = {}, agora = new Date()) {
   return r;
 }
 
+/** Guarda quais abas do RDO o app escreveu (a importação não as conta como emitidas). */
+export async function registrarRdosDoApp(calc, acoes, gravadas) {
+  const doApp = { ...(calc.estado.config?.rdoDoApp || {}) };
+  for (const g of gravadas) doApp[g.numero] = { data: g.data, status: g.status };
+  await acoes.salvarConfig({ rdoDoApp: doApp });
+}
+
 export function motivoDoErro(err, nome) {
   const n = err?.name || '';
   if (n === 'NoModificationAllowedError' || n === 'InvalidModificationError' || n === 'InvalidStateError') return `Não consegui gravar "${nome}": ele parece aberto em outro programa. Feche e tente de novo.`;
@@ -191,7 +221,7 @@ export function motivoDoErro(err, nome) {
  * meta: { [caminho]: { lido, escrito, assinatura, gravadoEm } }, guardado
  * pelo chamador. Devolve { achados, meta, relatorio }.
  */
-export async function sincronizarPasta(dir, obterCalc, acoes, meta = {}, { forcar = false, intervaloMin = 10 * 60 * 1000, agora = new Date(), esperar = () => new Promise((ok) => setTimeout(ok, 400)) } = {}) {
+export async function sincronizarPasta(dir, obterCalc, acoes, meta = {}, { forcar = false, intervaloMin = 60 * 1000, agora = new Date(), esperar = () => new Promise((ok) => setTimeout(ok, 400)) } = {}) {
   const achados = await acharPlanilhas(dir);
   const relatorio = {};
   const novaMeta = { ...meta };
@@ -235,12 +265,13 @@ export async function sincronizarPasta(dir, obterCalc, acoes, meta = {}, { forca
       continue;
     }
     try {
-      const g = await gravarTipo(arq, calc, {}, agora);
+      const g = await gravarTipo(arq, calc, tipo === 'rdo' ? { datas: rdosParaGravar(calc).map((x) => x.data) } : {}, agora);
       if (g?.conflitos?.length) r.aviso = `não gravei ${g.conflitos.join('; ')}`;
       if (g?.bytes) {
         r.gravou = g.texto;
         m.escrito = g.modificado;
         m.gravadoEm = agora.getTime();
+        if (g.gravadas) await registrarRdosDoApp(calc, acoes, g.gravadas);
       }
       m.assinatura = sig;
     } catch (err) {

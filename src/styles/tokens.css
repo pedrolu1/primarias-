@@ -38,6 +38,8 @@
   --e-massa1200: #1f9a3a;
   --e-desmontagem: #7f8aa3;
   --e-pendente: #222d45;
+  /* andaime montado: amarelo de andaime, fora da família das etapas */
+  --andaime: #f5c518;
 
   --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
   --font-body: 'Barlow', system-ui, -apple-system, sans-serif;

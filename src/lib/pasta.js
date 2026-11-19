@@ -161,13 +161,14 @@ export function arquivoNaPasta(tipo) {
 export async function gravarNaPasta(tipo, calc, opcoes = {}) {
   if (estado.permissao !== 'granted') throw new Error('Reconecte a pasta primarias antes.');
   // relê a pasta para pegar o arquivo atual (e ver se está aberto no Excel)
-  const { acharPlanilhas, gravarTipo } = await sincronia();
+  const { acharPlanilhas, gravarTipo, registrarRdosDoApp } = await sincronia();
   estado.achados = await acharPlanilhas(estado.pasta);
   const arq = estado.achados[tipo];
   if (!arq) throw new Error(`Não achei a planilha ${TIPOS_PASTA[tipo].nome} na pasta.`);
   const r = await gravarTipo(arq, calc, opcoes);
   if (r?.bytes) {
     meta[arq.caminho] = { ...(meta[arq.caminho] || {}), escrito: r.modificado, gravadoEm: Date.now() };
+    if (r.gravadas) await registrarRdosDoApp(calc, { salvarConfig }, r.gravadas);
     await guardarValor(CHAVE_META, meta);
     estado.relatorio = { ...estado.relatorio, [tipo]: { arquivo: arq.nome, caminho: arq.caminho, gravou: r.texto, quando: Date.now() } };
     avisar();

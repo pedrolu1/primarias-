@@ -1,11 +1,11 @@
 // Mapa no celular: um bloco por vez, igual à planilha de Gestão Visual,
 // com toque no forno para abrir a tela dele (lançar e tirar as fotos).
 import { el } from '../../base/dom.js';
-import { legendaEtapas } from '../../components/base.js';
+import { legendaEtapas, faixaAndamento } from '../../components/base.js';
 import { mapaBloco } from '../../components/mapa.js';
 import { abrirTelaForno } from '../../components/telaForno.js';
 import { blocosDa, contratoAtivo, FORNOS_POR_BLOCO } from '../../data/obra.js';
-import { avancoFisico, idxsDoBloco } from '../../lib/calculo.js';
+import { avancoFisico, idxsDoBloco, andamento } from '../../lib/calculo.js';
 
 let blocoEscolhido = null;
 
@@ -28,12 +28,13 @@ export function paginaMapa({ calc, perfil, mudou, redesenhar }) {
 
   return [
     el('div', { class: 'entre' }, [el('h2', { style: { fontSize: '28px' } }, `Bateria ${bat}`), el('span', { class: 'fraco', style: { fontSize: '13.5px' } }, 'Toque no forno para detalhes')]),
+    faixaAndamento(andamento(calc, bat)),
     trilho,
     el('div', { class: 'entre' }, [
       el('div', { class: 'titulo-secao' }, [`Bloco ${blocoEscolhido}`]),
       el('span', { class: 'fraco', style: { fontSize: '13.5px' } }, b.concluidoEm ? 'Bloco concluído' : `${b.concluidos} de 18 fornos · ${Math.round(av * 100)}% físico`)
     ]),
-    legendaEtapas(),
+    legendaEtapas({ andaime: true }),
     mapaBloco(calc, blocoEscolhido, { aoClicarForno: abrir, mudou })
   ];
 }

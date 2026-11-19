@@ -15,8 +15,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png'],
       manifest: {
+        id: './',
         name: 'REFRAMAX Primárias',
         short_name: 'Primárias',
+        lang: 'pt-BR',
         description: 'Lançamento e acompanhamento da substituição das válvulas primárias dos fornos da coqueria.',
         theme_color: '#0c111d',
         background_color: '#0c111d',
@@ -25,6 +27,7 @@ export default defineConfig({
         start_url: '.',
         scope: '.',
         icons: [
+          { src: 'icons/icon-180.png', sizes: '180x180', type: 'image/png' },
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }

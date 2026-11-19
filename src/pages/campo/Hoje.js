@@ -6,6 +6,7 @@ import { feed } from '../../components/feed.js';
 import { abrirPedidoCorrecao } from '../../components/correcao.js';
 import { abrirTelaForno } from '../../components/telaForno.js';
 import { abrirLancamento } from '../../components/lancar.js';
+import { cartaoInstalar } from '../../components/instalar.js';
 import { iconeEtapa, ic } from '../../lib/icones.js';
 import { ETAPAS_MAPA, FORNOS, LADOS, contratoAtivo, etapaPorId, noMeio, rotulo } from '../../data/obra.js';
 import { semanaAtual, proximaDoLado, resumoAlvos, checklists } from '../../lib/calculo.js';
@@ -37,6 +38,7 @@ export function paginaHoje({ calc, perfil, stats, lancar, ir, redesenhar }) {
   return [
     el('p', { class: 'fraco', style: { fontSize: '14px', marginBottom: '-6px' } }, `Bom trabalho, ${perfil.nome}. Hoje é ${porExtenso(hj)}.`),
     hero,
+    cartaoInstalar(),
     fotosPendentes(calc, ir),
     frente(calc, fornosBat, perfil, redesenhar),
     el('section', { class: 'pilha' }, [
