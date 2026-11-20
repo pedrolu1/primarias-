@@ -1,13 +1,14 @@
 // Fluxo de lançamento: etapa → onde → confirmar. Pensado para o celular, com
 // botões grandes, o caminho mais curto já selecionado e o aviso de forno fechado no fim.
 // Vindo do botão de um forno (etapa e forno já sabidos), abre direto na
-// confirmação, com as primárias para ajustar ali mesmo.
+// confirmação, com as primárias para ajustar ali mesmo. O 5S (limpeza e
+// organização) também sai daqui: local, dia e observação, e vai para o RDO.
 import { el } from '../base/dom.js';
 import { abrirFolha, seis, etiquetaEtapa } from './base.js';
 import { ic, iconeEtapa } from '../lib/icones.js';
-import { ETAPAS, etapaPorId, FORNOS, blocosDa, contratoAtivo, fornoPorId, primariaPorId, primariasDoAlvo, NIVEL_NOME, noMeio } from '../data/obra.js';
-import { calcular, alvosDoForno, resumoAlvos, efeitosDoLancamento } from '../lib/calculo.js';
-import { estadoAtual, lancar } from '../lib/banco.js';
+import { ETAPAS, etapaPorId, FORNOS, blocosDa, contratoAtivo, fornoPorId, primariaPorId, primariasDoAlvo, NIVEL_NOME, noMeio, LOCAIS_5S } from '../data/obra.js';
+import { calcular, alvosDoForno, resumoAlvos, efeitosDoLancamento, descreverLocais5S } from '../lib/calculo.js';
+import { estadoAtual, lancar, registrarOcorrencia } from '../lib/banco.js';
 import { hoje, somarDias, completa } from '../lib/datas.js';
 import { vibrar, tocar, comemorar } from '../lib/efeitos.js';
 import { autorDe } from '../lib/acesso.js';
@@ -26,10 +27,10 @@ export function mostrarBlocoAtivo(raiz) {
  * Abre o lançamento. Com `etapa` e `fornoId` já vem na confirmação, com o
  * forno escolhido; `alvos` restringe a seleção (ex.: só o lado máquina).
  */
-export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = null, aoLancar = null }) {
+export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = null, aoLancar = null, cincoS = false }) {
   const bat = contratoAtivo().bateria;
   const fornosBat = FORNOS.filter((f) => f.bateria === bat);
-  const st = { passo: etapa ? 2 : 1, etapa, bloco: fornoId ? fornoPorId[fornoId].bloco : null, sel: new Map(), data: hoje(), outroDia: false, obs: '' };
+  const st = { passo: cincoS ? '5s' : etapa ? 2 : 1, etapa, bloco: fornoId ? fornoPorId[fornoId].bloco : null, sel: new Map(), data: hoje(), outroDia: false, obs: '', locais: new Set(), lajes: new Set(), fornos5S: new Set(), bloco5S: null };
   if (etapa && fornoId) {
     const lib = liberadosNoForno(calcular(estadoAtual()), etapa, fornoId).map((a) => a.id).filter((id) => !alvos || alvos.includes(id));
     if (lib.length) {
@@ -58,6 +59,7 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
     st.topo = passoDesenhado !== st.passo;
     passoDesenhado = st.passo;
     if (st.passo === 1) passoEtapa(calc);
+    else if (st.passo === '5s') passo5S(calc);
     else if (st.passo === 2) passoOnde(calc);
     else passoConfirmar(calc);
   }
@@ -88,7 +90,11 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
             el('div', {}, [el('strong', {}, e.curto), el('small', {}, NIVEL_NOME[e.nivel])]),
             el('span', { class: 'pend' }, livres ? `${livres} primárias liberadas` : 'Nada liberado agora')
           ]);
-        }))
+        })),
+        el('button', { type: 'button', class: 'etapa-op op-5s', onclick: () => { vibrar(8); st.passo = '5s'; desenhar(); } }, [
+          el('span', { class: 'icone', html: ic.vassoura(22) }),
+          el('div', {}, [el('strong', {}, '5S · Limpeza e organização'), el('small', {}, 'Intermediária, interligação, laje entre blocos ou fornos')])
+        ])
       ]
     });
   }
@@ -187,10 +193,6 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
     const fornos = [...st.sel.values()].filter((s) => s.size).length;
     const umForno = st.sel.size === 1 ? [...st.sel.keys()][0] : null;
     const botao = el('button', { type: 'button', class: 'btn btn-brasa', disabled: !n, onclick: () => confirmar(botao) }, n ? [el('span', { html: iconeEtapa(e.id, 22) }), `Lançar ${noMeio(e)}`] : 'Marque o que foi feito');
-    const dia = (rotuloDia, data) => el('button', {
-      type: 'button', class: `tipo-op${!st.outroDia && st.data === data ? ' ativo' : ''}`, 'aria-pressed': String(!st.outroDia && st.data === data),
-      onclick: () => { st.data = data; st.outroDia = false; desenhar(); }
-    }, rotuloDia);
     folha.montar({
       topo: st.topo,
       titulo: 'Confere e lança',
@@ -203,22 +205,102 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = 
           umForno ? null : el('ul', {}, resumoAlvos(prims, e.id).map((l) => el('li', {}, [el('span', { class: 'ponto' }), l])))
         ]),
         umForno ? ajusteForno(calc, e, umForno, { naConfirmacao: true }) : null,
-        el('div', { class: 'field' }, [
-          el('span', { class: 'field-label' }, 'Dia em que foi feito'),
-          el('div', { class: 'tipos-ocorrencia' }, [
-            dia('Hoje', hoje()),
-            dia('Ontem', somarDias(hoje(), -1)),
-            el('button', { type: 'button', class: `tipo-op${st.outroDia ? ' ativo' : ''}`, 'aria-pressed': String(st.outroDia), onclick: () => { st.outroDia = true; desenhar(); } }, 'Outro dia')
-          ]),
-          st.outroDia ? el('input', { id: 'lanc-data', class: 'input', type: 'date', 'aria-label': 'Dia em que foi feito', value: st.data, max: hoje(), min: somarDias(hoje(), -7), onchange: (ev) => { st.data = ev.target.value || hoje(); } }) : null
-        ]),
-        el('div', { class: 'field' }, [
-          el('label', { class: 'field-label', for: 'lanc-obs' }, 'Observação (opcional)'),
-          el('textarea', { id: 'lanc-obs', class: 'textarea', rows: 2, placeholder: 'Ex.: manilha trincada no P02, trocada', value: st.obs, oninput: (ev) => { st.obs = ev.target.value; } })
-        ])
+        campoDia(),
+        campoObs('Ex.: manilha trincada no P02, trocada')
       ],
       pe: [botao]
     });
+  }
+
+  function campoDia() {
+    const dia = (rotuloDia, data) => el('button', {
+      type: 'button', class: `tipo-op${!st.outroDia && st.data === data ? ' ativo' : ''}`, 'aria-pressed': String(!st.outroDia && st.data === data),
+      onclick: () => { st.data = data; st.outroDia = false; desenhar(); }
+    }, rotuloDia);
+    return el('div', { class: 'field' }, [
+      el('span', { class: 'field-label' }, 'Dia em que foi feito'),
+      el('div', { class: 'tipos-ocorrencia' }, [
+        dia('Hoje', hoje()),
+        dia('Ontem', somarDias(hoje(), -1)),
+        el('button', { type: 'button', class: `tipo-op${st.outroDia ? ' ativo' : ''}`, 'aria-pressed': String(st.outroDia), onclick: () => { st.outroDia = true; desenhar(); } }, 'Outro dia')
+      ]),
+      st.outroDia ? el('input', { id: 'lanc-data', class: 'input', type: 'date', 'aria-label': 'Dia em que foi feito', value: st.data, max: hoje(), min: somarDias(hoje(), -7), onchange: (ev) => { st.data = ev.target.value || hoje(); } }) : null
+    ]);
+  }
+
+  function campoObs(exemplo) {
+    return el('div', { class: 'field' }, [
+      el('label', { class: 'field-label', for: 'lanc-obs' }, 'Observação (vai para o RDO)'),
+      el('textarea', { id: 'lanc-obs', class: 'textarea', rows: 2, placeholder: exemplo, value: st.obs, oninput: (ev) => { st.obs = ev.target.value; } })
+    ]);
+  }
+
+  // ---- 5S: onde foi feito ----
+  function passo5S(calc) {
+    const blocos = blocosDa(bat);
+    // lajes entre blocos vizinhos da mesma metade da bateria (a via separa as metades)
+    const pares = [blocos.slice(0, 4), blocos.slice(4)].flatMap((m) => m.slice(0, -1).map((b, i) => `${b}-${m[i + 1]}`));
+    st.bloco5S ||= blocos.find((bl) => !calc.blocos[bl].concluidoEm) || blocos[0];
+    const alternar = (conj, v) => { vibrar(6); if (conj.has(v)) conj.delete(v); else conj.add(v); desenhar(); };
+    const chip = (ativo, rotulo, fn) => el('button', { type: 'button', class: `tipo-op${ativo ? ' ativo' : ''}`, 'aria-pressed': String(ativo), onclick: fn }, rotulo);
+    const locais = montarLocais5S();
+    const falta = st.locais.has('laje') && !st.lajes.size ? 'Escolha entre quais blocos' : st.locais.has('fornos') && !st.fornos5S.size ? 'Escolha os fornos' : !locais.length ? 'Escolha onde foi feito' : '';
+    const botao = el('button', { type: 'button', class: 'btn btn-brasa', disabled: Boolean(falta), onclick: () => registrar5S(botao, locais) }, falta || [el('span', { html: ic.vassoura(22) }), 'Registrar 5S']);
+    folha.montar({
+      topo: st.topo,
+      titulo: '5S · Limpeza e organização',
+      subtitulo: 'Onde a equipe fez? Pode marcar mais de um.',
+      corpo: [
+        el('div', { class: 'entre' }, [el('span'), el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => { st.passo = 1; desenhar(); } }, 'Trocar o que foi feito')]),
+        el('div', { class: 'locais-5s' }, LOCAIS_5S.map((l) => chip(st.locais.has(l.id), l.nome, () => alternar(st.locais, l.id)))),
+        st.locais.has('laje') ? el('div', { class: 'field' }, [
+          el('span', { class: 'field-label' }, 'Laje entre quais blocos?'),
+          el('div', { class: 'tipos-ocorrencia' }, pares.map((par) => chip(st.lajes.has(par), par.replace('-', ' e '), () => alternar(st.lajes, par))))
+        ]) : null,
+        st.locais.has('fornos') ? el('div', { class: 'field' }, [
+          el('span', { class: 'field-label' }, `Quais fornos?${st.fornos5S.size ? ` (${st.fornos5S.size} marcado${st.fornos5S.size > 1 ? 's' : ''})` : ''}`),
+          el('div', { class: 'blocos-trilho', role: 'tablist', 'aria-label': 'Blocos' }, blocos.map((bl) => {
+            const marcados = [...st.fornos5S].filter((f) => f.startsWith(`${bl}-`)).length;
+            return el('button', { type: 'button', role: 'tab', 'aria-selected': String(bl === st.bloco5S), class: `bloco-op${bl === st.bloco5S ? ' ativo' : ''}`, onclick: () => { st.bloco5S = bl; desenhar(); } }, [bl, el('small', {}, marcados ? `${marcados} marcado${marcados > 1 ? 's' : ''}` : '')]);
+          })),
+          el('div', { class: 'grade-fornos' }, fornosBat.filter((f) => f.bloco === st.bloco5S).map((f) => {
+            const marcado = st.fornos5S.has(f.id);
+            return el('button', { type: 'button', class: `sopro-op${marcado ? ' ativo' : ''}`, 'aria-pressed': String(marcado), onclick: () => alternar(st.fornos5S, f.id) }, `F${String(f.forno).padStart(2, '0')}`);
+          }))
+        ]) : null,
+        locais.length ? el('p', { class: 'resumo-5s' }, `Vai para o RDO: a equipe realizou 5S ${descreverLocais5S(locais)}.`) : null,
+        campoDia(),
+        campoObs('Ex.: retirada de resíduos para a caçamba')
+      ],
+      pe: [botao]
+    });
+    mostrarBlocoAtivo(folha.caixa);
+  }
+
+  function montarLocais5S() {
+    const l = [];
+    if (st.locais.has('intermediaria')) l.push('intermediaria');
+    if (st.locais.has('interligacao')) l.push('interligacao');
+    if (st.locais.has('laje')) l.push(...[...st.lajes].sort().map((p) => `laje:${p}`));
+    if (st.locais.has('fornos')) l.push(...[...st.fornos5S].sort().map((f) => `forno:${f}`));
+    return l;
+  }
+
+  function registrar5S(botao, locais) {
+    botao.disabled = true;
+    registrarOcorrencia({ data: st.data, tipo: '5s', texto: st.obs.trim(), autor: autorDe(perfil), locais });
+    vibrar([18, 30, 26]);
+    tocar('ok');
+    setTimeout(() => {
+      folha.fechar();
+      const aviso = el('div', { class: 'lancado-aviso', role: 'status' }, [
+        el('span', { class: 'lancado-selo', style: { background: 'var(--accent-500)' }, html: ic.check(22) }),
+        el('div', {}, [el('small', { style: { color: 'var(--text-1)' } }, '5S registrado'), el('strong', {}, 'Vai para o RDO do dia')])
+      ]);
+      document.body.appendChild(aviso);
+      setTimeout(() => aviso.classList.add('saindo'), 2200);
+      setTimeout(() => aviso.remove(), 2600);
+    }, 250);
   }
 
   function confirmar(botao) {

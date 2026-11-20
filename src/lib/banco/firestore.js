@@ -116,9 +116,9 @@ export function decidirCorrecao(id, aprovar, por, resposta = '') {
 // ---------------------------------------------------------------------------
 // Registros do dia, RDO, desvios, configuração e base
 // ---------------------------------------------------------------------------
-export function registrarOcorrencia({ data, tipo, texto, autor, fornos = null }) {
+export function registrarOcorrencia({ data, tipo, texto, autor, fornos = null, locais = null }) {
   const ref = doc(collection(db, 'prim_ocorrencias'));
-  const o = { data, tipo, texto: texto.trim(), autor, criadoEmLocal: Date.now(), status: 'valido', ...(fornos?.length ? { fornos } : {}) };
+  const o = { data, tipo, texto: texto.trim(), autor, criadoEmLocal: Date.now(), status: 'valido', ...(fornos?.length ? { fornos } : {}), ...(locais?.length ? { locais } : {}) };
   semEsperar(setDoc(ref, { ...o, criadoEm: serverTimestamp() }), 'o registro');
   return { id: ref.id, ...o };
 }

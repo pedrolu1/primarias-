@@ -7,8 +7,9 @@ import { segmented } from '../../base/ui.js';
 import { statusChip } from '../../components/base.js';
 import { folhaRdo } from '../../components/rdoFolha.js';
 import { ic } from '../../lib/icones.js';
-import { EFETIVO_MODELO, TIPOS_OCORRENCIA, FERIADOS } from '../../data/obra.js';
-import { rdoDoDia, observacoesSugeridas, rdoUltimo } from '../../lib/calculo.js';
+import { EFETIVO_MODELO, TIPOS_OCORRENCIA, FERIADOS, etapaPorId } from '../../data/obra.js';
+import { rdoDoDia, observacoesSugeridas, rdoUltimo, textoOcorrencia, resumoAlvos } from '../../lib/calculo.js';
+import { corrigirTexto } from '../../lib/corretor.js';
 import { salvarRdo } from '../../lib/banco.js';
 import { modeloGuardado, estaOcupado, gerarExcel, usarRedesenho, escolherArquivo } from '../../lib/excel.js';
 import { arquivoNaPasta } from '../../lib/pasta.js';
@@ -88,13 +89,17 @@ export function paginaRdo(ctx) {
   ];
 }
 
-/** O que os líderes registraram no Diário do dia. */
+/** O que os líderes registraram no dia: Diário, 5S e observações dos lançamentos. */
 function registrosDoCampo(r) {
+  const itens = [
+    ...r.ocorrencias.map((o) => ({ titulo: NOME_TIPO[o.tipo] || o.tipo, texto: corrigirTexto(textoOcorrencia(o)), autor: o.autor?.nome })),
+    ...r.observacoesCampo.map((l) => ({ titulo: `${etapaPorId[l.etapa].curto} · ${resumoAlvos(l.prims, l.etapa).join(', ')}`, texto: corrigirTexto(l.obs), autor: l.autor?.nome }))
+  ];
   return el('section', { class: 'cartao nao-imprimir' }, [
-    el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Registros do campo'), el('p', {}, 'Do Diário dos líderes. A sopragem vira coluna do RDO; o resto entra nas observações.')]), el('span', { class: 'num', style: { fontSize: '24px' } }, String(r.ocorrencias.length))]),
-    r.ocorrencias.length
-      ? el('div', { class: 'pilha', style: { gap: '8px' } }, r.ocorrencias.map((o) => el('div', { class: 'pedido' }, [
-          el('div', {}, [el('strong', {}, NOME_TIPO[o.tipo] || o.tipo), el('p', {}, `${o.texto} · ${o.autor?.nome || ''}`)])
+    el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Registros do campo'), el('p', {}, 'Diário, 5S e observações dos lançamentos. A sopragem vira coluna do RDO; o resto entra nas observações, já corrigido.')]), el('span', { class: 'num', style: { fontSize: '24px' } }, String(itens.length))]),
+    itens.length
+      ? el('div', { class: 'pilha', style: { gap: '8px' } }, itens.map((i) => el('div', { class: 'pedido' }, [
+          el('div', {}, [el('strong', {}, i.titulo), el('p', {}, `${i.texto}${i.autor ? ` · ${i.autor}` : ''}`)])
         ])))
       : el('div', { class: 'vazio-convite' }, [el('strong', {}, 'Nenhum registro'), 'Os líderes registram o 5S, a sopragem e as ocorrências pela aba Diário do app.'])
   ]);

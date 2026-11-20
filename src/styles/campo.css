@@ -125,6 +125,11 @@
 .etapa-op small { display: block; font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
 .etapa-op .ordem { position: absolute; top: 12px; right: 14px; font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--text-3); }
 .etapa-op .pend { font-size: 12px; color: var(--text-1); font-weight: 600; }
+/* 5S: ocupa a linha inteira, abaixo das etapas */
+.etapa-op.op-5s { --cor: var(--accent-500); flex-direction: row; align-items: center; gap: 12px; margin-top: 10px; width: 100%; min-height: 0; }
+.locais-5s { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.locais-5s .tipo-op { height: 48px; font-size: 15px; }
+.resumo-5s { font-size: 13.5px; color: var(--text-1); line-height: 1.45; padding: 10px 12px; border-radius: var(--r-md); background: var(--bg-2); border: 1px solid var(--border-soft); }
 
 /* ---- Lançar: blocos e fornos ---- */
 .blocos-trilho { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }

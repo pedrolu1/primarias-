@@ -1,12 +1,15 @@
-// Diário do líder: registra o 5S, a sopragem dos fornos, as ocorrências, o
-// material e a segurança do dia. A sopragem vira a coluna "SOPRAGEM DOS
-// FORNOS" do RDO (não conta avanço); o resto vai para as observações. As
-// atividades do dia saem sozinhas dos lançamentos.
+// Diário do líder: registra a sopragem dos fornos, as ocorrências, o material
+// e a segurança do dia; o 5S abre o mesmo formulário do botão de lançar (com o
+// local). A sopragem vira a coluna "SOPRAGEM DOS FORNOS" do RDO (não conta
+// avanço); o resto vai para as observações. As atividades do dia saem
+// sozinhas dos lançamentos.
 import { el } from '../../base/dom.js';
 import { etiquetaEtapa, statusChip } from '../../components/base.js';
 import { ic } from '../../lib/icones.js';
 import { TIPOS_OCORRENCIA, contratoAtivo, blocosDa, FORNOS, FORNOS_POR_BLOCO } from '../../data/obra.js';
-import { rdoDoDia } from '../../lib/calculo.js';
+import { rdoDoDia, textoOcorrencia } from '../../lib/calculo.js';
+import { corrigirTexto } from '../../lib/corretor.js';
+import { abrirLancamento } from '../../components/lancar.js';
 import { registrarOcorrencia, removerOcorrencia } from '../../lib/banco.js';
 import { autorDe } from '../../lib/acesso.js';
 import { hoje, somarDias, porExtenso } from '../../lib/datas.js';
@@ -14,7 +17,7 @@ import { vibrar, tocar } from '../../lib/efeitos.js';
 import { toast } from '../../base/toast.js';
 
 let dia = null;
-let tipo = '5s';
+let tipo = 'ocorrencia';
 let rascunho = '';
 let blocoSopragem = null;
 const soprados = new Set();
@@ -24,7 +27,6 @@ const STATUS = { rascunho: 'RDO aberto', fechado: 'RDO fechado', assinado: 'RDO 
 /** Começos de frase comuns, para digitar menos na frente do forno. */
 function atalhos(t, bloco) {
   return {
-    '5s': [`equipe realizou 5S no bloco ${bloco}`, 'limpeza e organização da área no fim do turno'],
     ocorrencia: ['frente parada aguardando liberação da Ternium', 'equipe direcionada para '],
     material: ['abastecimento de andaime na interligação ', 'falta de material: '],
     seguranca: ['DDS realizado com a equipe', 'parada por sirene de emergência']
@@ -41,7 +43,7 @@ export function paginaDiario(ctx) {
 
   const texto = el('textarea', {
     class: 'textarea', rows: 3, id: 'diario-texto', value: rascunho, maxlength: 600,
-    placeholder: 'O que aconteceu? Ex.: equipe realizou 5S no bloco B6.',
+    placeholder: 'O que aconteceu? Ex.: frente parada aguardando liberação.',
     oninput: (ev) => { rascunho = ev.target.value; }
   });
   const registrar = (ev) => {
@@ -78,7 +80,8 @@ export function paginaDiario(ctx) {
   const formulario = el('section', { class: 'card card-pad pilha', style: { gap: '12px' } }, [
     el('div', { class: 'tipos-ocorrencia', role: 'radiogroup', 'aria-label': 'Tipo de registro' }, TIPOS_OCORRENCIA.map((t) => el('button', {
       type: 'button', role: 'radio', 'aria-checked': String(t.id === tipo), class: `tipo-op${t.id === tipo ? ' ativo' : ''}`,
-      onclick: (ev) => { tipo = t.id; redesenhar(); }
+      // o 5S tem local: abre o formulário do lançamento
+      onclick: () => { if (t.id === '5s') abrirLancamento({ perfil, cincoS: true }); else { tipo = t.id; redesenhar(); } }
     }, t.id === '5s' ? '5S' : t.nome.split(' ')[0]))),
     tipo === 'sopragem' ? escolherFornos(calc, bloco, redesenhar) : null,
     tipo === 'sopragem' ? null : texto,
@@ -96,7 +99,7 @@ export function paginaDiario(ctx) {
       ? el('div', { class: 'card card-pad', style: { padding: '2px 14px' } }, r.ocorrencias.map((o) => el('div', { class: 'registro' }, [
           el('div', {}, [
             el('small', {}, `${NOME_TIPO[o.tipo] || o.tipo} · ${o.autor?.nome || ''}${o.criadoEmLocal ? ` · ${new Date(o.criadoEmLocal).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}`),
-            el('p', {}, o.texto)
+            el('p', {}, corrigirTexto(textoOcorrencia(o)))
           ]),
           aberto && meus(o)
             ? el('button', {

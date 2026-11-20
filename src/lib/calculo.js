@@ -3,6 +3,7 @@
 // sobre o estado do banco.
 import { SEED_BATERIAS, SEED_EPOCH, SEED_VALORES_POR_PRIMARIA } from '../data/seed.js';
 import { SEED_CURVA } from '../data/curva-seed.js';
+import { corrigirTexto } from './corretor.js';
 import {
   PRIMARIAS, FORNOS, ETAPAS, etapaPorId, contratoAtivo, blocosDa, fornoPorId, primariaPorId,
   MATERIAIS, primariasDoAlvo, BATERIAS, RDO_ULTIMO, noMeio, SLOTS_FOTO, ORDEM_RDO, TITULO_SOPRAGEM, FERIADOS
@@ -484,9 +485,11 @@ export function rdoDoDia(calc, data) {
     return { ...m, anterior, aplicado, acumulado: anterior + aplicado, calculado: salvo?.materiais?.[m.id] == null };
   });
   const ocorrencias = (calc.estado.ocorrencias || []).filter((o) => o.data === data && o.status !== 'cancelado').sort((a, b) => (a.criadoEmLocal || 0) - (b.criadoEmLocal || 0));
+  // lançamentos do dia com observação: entram nas observações do RDO
+  const observacoesCampo = calc.validos.filter((l) => l.data === data && l.obs?.trim()).sort((a, b) => (a.criadoEmLocal || 0) - (b.criadoEmLocal || 0));
   // até o último RDO da planilha, o relatório já foi emitido fora do app
   const status = salvo?.status && salvo.status !== 'rascunho' ? salvo.status : data <= ultimo.data ? 'planilha' : 'rascunho';
-  return { data, numero: numeroRdo(calc, data), atividades, sopragem, colunas, materiais, ocorrencias, salvo, status, expediente: temExpediente(calc, data) };
+  return { data, numero: numeroRdo(calc, data), atividades, sopragem, colunas, materiais, ocorrencias, observacoesCampo, salvo, status, expediente: temExpediente(calc, data) };
 }
 
 /**
@@ -505,11 +508,53 @@ export function numeroRdo(calc, data) {
   return n;
 }
 
-/** Texto das observações do RDO montado a partir do que o campo registrou no dia. */
+const lista = (itens) => (itens.length <= 1 ? itens[0] || '' : `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}`);
+
+/** Onde foi o 5S, em frase: "na intermediária, na laje entre os blocos B6 e B7 e nos fornos B7 F03 e F04". */
+export function descreverLocais5S(locais = []) {
+  const partes = [];
+  if (locais.includes('intermediaria')) partes.push('na intermediária');
+  if (locais.includes('interligacao')) partes.push('na interligação');
+  const lajes = locais.filter((l) => l.startsWith('laje:')).map((l) => l.slice(5).split('-')).sort();
+  if (lajes.length === 1) partes.push(`na laje entre os blocos ${lajes[0][0]} e ${lajes[0][1]}`);
+  else if (lajes.length) partes.push(`nas lajes entre os blocos ${lista(lajes.map(([a, b]) => `${a}/${b}`))}`);
+  const fornos = locais.filter((l) => l.startsWith('forno:')).map((l) => l.slice(6)).sort();
+  if (fornos.length) {
+    const porBloco = new Map();
+    for (const f of fornos) {
+      const [bl, fo] = f.split('-');
+      if (!porBloco.has(bl)) porBloco.set(bl, []);
+      porBloco.get(bl).push(fo);
+    }
+    const grupos = [...porBloco.entries()].map(([bl, fs]) => `${bl} ${lista(fs)}`);
+    partes.push(`${fornos.length === 1 ? 'no forno' : 'nos fornos'} ${grupos.join(', ')}`);
+  }
+  return lista(partes);
+}
+
+/** Texto de um registro do Diário (o 5S com local vira frase). */
+export function textoOcorrencia(o) {
+  if (o.tipo === '5s' && o.locais?.length) return `a equipe realizou 5S (limpeza e organização) ${descreverLocais5S(o.locais)}${o.texto?.trim() ? `. ${o.texto.trim()}` : ''}`;
+  return o.texto || '';
+}
+
+/**
+ * Observações do RDO montadas com tudo o que o campo registrou no dia: o 5S
+ * e as ocorrências do Diário e a observação de cada lançamento, com o texto
+ * corrigido e em maiúsculas, como na planilha.
+ */
 export function observacoesSugeridas(rdo) {
-  const textos = rdo.ocorrencias.filter((o) => o.tipo !== 'sopragem').map((o) => o.texto.trim().replace(/\.$/, '')).filter(Boolean);
-  if (!textos.length) return '';
-  return `A REFRAMAX INFORMA QUE ${textos.join('; ').toUpperCase()}.`;
+  const doLancamento = (l) => {
+    const e = etapaPorId[l.etapa];
+    const onde = resumoAlvos(l.prims, l.etapa).map((s) => s.replace(/ · /g, ' ')).join(', ');
+    return `${e.id === 'assentamento' ? 'no' : 'na'} ${e.rdo.toLowerCase()} do ${onde}, ${l.obs.trim()}`;
+  };
+  const itens = [
+    ...rdo.ocorrencias.filter((o) => o.tipo !== 'sopragem').map(textoOcorrencia),
+    ...(rdo.observacoesCampo || []).map(doLancamento)
+  ].map(corrigirTexto).filter(Boolean);
+  if (!itens.length) return '';
+  return `A REFRAMAX INFORMA QUE ${itens.join('; ')}.`.toUpperCase();
 }
 
 // ---------------------------------------------------------------------------

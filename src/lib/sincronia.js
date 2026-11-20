@@ -10,7 +10,7 @@
 // Antes de mudar um arquivo, o app guarda uma cópia do dia em _backup_app.
 import * as P from './planilhas.js';
 import { FORNOS, contratoAtivo } from '../data/obra.js';
-import { semanasDaPlanilha, rdoUltimo, rdoDoDia } from './calculo.js';
+import { semanasDaPlanilha, rdoUltimo, rdoDoDia, observacoesSugeridas } from './calculo.js';
 import { hoje, inicioDaSemana, somarDias } from './datas.js';
 import { TIPOS_PASTA } from './tiposPasta.js';
 
@@ -90,7 +90,7 @@ export function assinatura(tipo, calc) {
       .filter(([, r]) => ['fechado', 'assinado'].includes(r?.status))
       .map(([d, r]) => `${d}:${r.numero}:${r.status}:${r.fechadoEm || ''}`)
       .sort();
-    const dias = rdosParaGravar(calc).map((r) => JSON.stringify([r.data, r.numero, r.status, r.colunas, r.materiais, r.salvo || null, r.ocorrencias.map((o) => o.texto)]));
+    const dias = rdosParaGravar(calc).map((r) => JSON.stringify([r.data, r.numero, r.status, r.colunas, r.materiais, r.salvo || null, observacoesSugeridas(r)]));
     texto = [...fechados, ...dias].join('|');
   }
   let h = 5381;

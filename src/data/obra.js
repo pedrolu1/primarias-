@@ -89,6 +89,15 @@ export const MOTIVOS_DESVIO = [
 export const EMPRESAS_DESVIO = ['Reframax', 'Ternium', 'Não aplicável'];
 
 // Registros do dia que vão para as observações do RDO.
+// 5S (limpeza e organização): onde a equipe fez. "Laje entre blocos" pede o
+// par de blocos; "Fornos", o bloco e os fornos.
+export const LOCAIS_5S = [
+  { id: 'intermediaria', nome: 'Intermediária' },
+  { id: 'interligacao', nome: 'Interligação' },
+  { id: 'laje', nome: 'Laje entre blocos' },
+  { id: 'fornos', nome: 'Fornos' }
+];
+
 export const TIPOS_OCORRENCIA = [
   { id: '5s', nome: '5S (organização e limpeza)' },
   { id: 'sopragem', nome: 'Sopragem dos fornos' },
