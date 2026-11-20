@@ -66,7 +66,10 @@ npm run build    # gera dist/
 2. **Publicar:** o site `reframax-primarias` da Netlify está ligado a este
    repositório (Site configuration → Build & deploy → Repository): cada push na
    `main` publica sozinho, com o build do `netlify.toml`. Se o build falhar, a
-   versão anterior continua no ar.
+   versão anterior continua no ar. Cada publicação gasta créditos do plano da
+   Netlify, então o trabalho vai para o ramo `trabalho` (que não é publicado,
+   e os commits levam `[skip netlify]`) e só entra na `main`, de uma vez, quando
+   o pacote de mudanças é aprovado.
 3. **Primeira conta:** abra o app e toque em "Criar conta". Essa conta vira o
    dono do app; as próximas aparecem para ele liberar na tela Usuários.
 4. **Senha e exclusão de contas:** Firebase → Configurações do projeto → Contas
