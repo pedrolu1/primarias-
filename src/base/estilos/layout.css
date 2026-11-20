@@ -78,7 +78,12 @@
 .credito { font-size: 11px; line-height: 1.45; color: var(--text-3); text-align: center; }
 .credito-sidebar { font-size: 10px; padding: 0 4px; opacity: 0.75; }
 .menu-recolhido .credito-sidebar { display: none; }
-.sidebar-user { display: flex; align-items: center; gap: 10px; padding: 6px 8px; }
+.sidebar-user { display: flex; align-items: center; gap: 10px; padding: 6px 8px; width: 100%; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: var(--r-md); }
+.sidebar-user:hover, .sidebar-user:focus-visible { background: var(--bg-3); outline: none; }
+.sidebar-seta { margin-left: auto; display: inline-flex; color: var(--text-2); transform: rotate(-90deg); transition: transform var(--dur-fast); }
+.conta-aberta .sidebar-seta { transform: rotate(90deg); }
+.sidebar-conta { display: none; flex-direction: column; gap: 10px; }
+.conta-aberta .sidebar-conta { display: flex; }
 .sidebar-user-name { font-size: 13px; font-weight: 700; color: var(--text-0); }
 .sidebar-user-role { font-size: 11px; color: var(--text-2); }
 

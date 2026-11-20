@@ -74,17 +74,47 @@ export function montarPainel(root, { perfil, menuDemo, trocarVisao }) {
     recolhido = innerWidth < 1200;
   }
   const alternar = el('button', { class: 'sidebar-toggle', type: 'button', onclick: () => recolher(!recolhido) });
+
+  // bloco da conta (nome, ver app de campo, trocar senha, sair): começa fechado
+  const CONTA = 'prim.menu.conta';
+  let contaAberta = false;
+  try {
+    contaAberta = localStorage.getItem(CONTA) === 'aberta';
+  } catch {
+    /* sem armazenamento: começa fechado */
+  }
+  const seta = el('span', { class: 'sidebar-seta sidebar-label', html: ic.chevronLeft(16) });
+  const botaoConta = el('button', { class: 'sidebar-user', type: 'button', title: perfil.nome, onclick: () => abrirConta(!contaAberta) }, [
+    el('span', { class: 'avatar' }, initials(perfil.nome)),
+    el('div', { class: 'sidebar-label' }, [el('div', { class: 'sidebar-user-name' }, perfil.nome), el('div', { class: 'sidebar-user-role' }, PAPEIS[perfil.papel].nome)]),
+    seta
+  ]);
+  const rodape = el('div', { class: 'sidebar-footer' }, [
+    botaoConta,
+    el('div', { class: 'sidebar-conta', id: 'sidebar-conta' }, [
+      trocarVisao ? el('button', { class: 'btn btn-outline btn-sm btn-block', title: 'Ver o app como o campo vê', type: 'button', onclick: () => trocarVisao('campo') }, [el('span', { class: 'sidebar-icon', html: ic.clock(15) }), el('span', { class: 'sidebar-label' }, 'Ver app de campo')]) : null,
+      el('button', { class: 'btn btn-ghost btn-sm btn-block', title: 'Trocar minha senha', type: 'button', onclick: abrirTrocarSenha }, [el('span', { class: 'sidebar-icon', html: ic.key(15) }), el('span', { class: 'sidebar-label' }, 'Trocar senha')]),
+      el('button', { class: 'btn btn-ghost btn-sm btn-block', title: 'Sair', type: 'button', onclick: () => window.dispatchEvent(new CustomEvent('prim:sair')) }, [el('span', { class: 'sidebar-icon', html: ic.logout(15) }), el('span', { class: 'sidebar-label' }, 'Sair')]),
+      credito('credito-sidebar')
+    ])
+  ]);
+  botaoConta.setAttribute('aria-controls', 'sidebar-conta');
+  function abrirConta(v) {
+    contaAberta = v;
+    rodape.classList.toggle('conta-aberta', v);
+    botaoConta.setAttribute('aria-expanded', String(v));
+    try {
+      localStorage.setItem(CONTA, v ? 'aberta' : 'fechada');
+    } catch {
+      /* sem armazenamento: vale até recarregar */
+    }
+  }
+  abrirConta(contaAberta);
   const shell = el('div', { class: 'desktop-shell' }, [
     el('aside', { class: 'desktop-sidebar' }, [
       el('div', { class: 'sidebar-brand' }, [el('div', { class: 'sidebar-brand-text' }, [el('div', { class: 'marca' }, 'Primárias'), el('div', { class: 'marca-tag' }, 'REFRAMAX · Coqueria')]), alternar]),
       nav,
-      el('div', { class: 'sidebar-footer' }, [
-        el('div', { class: 'sidebar-user', title: perfil.nome }, [el('span', { class: 'avatar' }, initials(perfil.nome)), el('div', { class: 'sidebar-label' }, [el('div', { class: 'sidebar-user-name' }, perfil.nome), el('div', { class: 'sidebar-user-role' }, PAPEIS[perfil.papel].nome)])]),
-        trocarVisao ? el('button', { class: 'btn btn-outline btn-sm btn-block', title: 'Ver o app como o campo vê', type: 'button', onclick: () => trocarVisao('campo') }, [el('span', { class: 'sidebar-icon', html: ic.clock(15) }), el('span', { class: 'sidebar-label' }, 'Ver app de campo')]) : null,
-        el('button', { class: 'btn btn-ghost btn-sm btn-block', title: 'Trocar minha senha', type: 'button', onclick: abrirTrocarSenha }, [el('span', { class: 'sidebar-icon', html: ic.key(15) }), el('span', { class: 'sidebar-label' }, 'Trocar senha')]),
-        el('button', { class: 'btn btn-ghost btn-sm btn-block', title: 'Sair', type: 'button', onclick: () => window.dispatchEvent(new CustomEvent('prim:sair')) }, [el('span', { class: 'sidebar-icon', html: ic.logout(15) }), el('span', { class: 'sidebar-label' }, 'Sair')]),
-        credito('credito-sidebar')
-      ])
+      rodape
     ]),
     el('main', { class: 'desktop-main' }, [
       el('div', { class: 'desktop-topbar' }, [

@@ -153,6 +153,7 @@ table.data-table.tabela-estreita { min-width: 0; }
   .sidebar-link .sidebar-label { display: none; }
   .sidebar-link.active::before { display: none; }
   .sidebar-footer { flex-direction: row; border-top: none; padding-top: 0; }
+  .sidebar-footer .sidebar-conta { display: flex; flex-direction: row; gap: 8px; }
   .sidebar-footer .btn-block { width: 36px; padding: 0; }
   .desktop-topbar { position: static; padding: 0 16px; height: 54px; }
   .desktop-topbar > div:first-child p, .topo-acoes .ao-vivo { display: none; }
